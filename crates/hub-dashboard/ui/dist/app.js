@@ -3,44 +3,81 @@
 // Tauri API - handle both Tauri 2.x API structures
 let invoke;
 
-// Tool definitions
+// Tool definitions with type info
 const TOOLS = [
     {
         id: 'desk-talk',
         name: 'DeskTalk',
         description: 'Voice-to-text transcription with push-to-talk. Press a key, speak, and your words are typed out.',
-        requiresApiKey: true
+        requiresApiKey: true,
+        type: 'gui', // Has its own GUI for hotkey config
+        hotkeyNote: 'Configure in DeskTalk settings'
     },
     {
         id: 'speak-selected',
         name: 'Speak Selected',
         description: 'Read selected text aloud using AI text-to-speech. Perfect for proofreading or accessibility.',
-        requiresApiKey: true
+        requiresApiKey: true,
+        type: 'cli',
+        hotkeyArg: '--ptt-key'
     },
     {
         id: 'quick-assistant',
         name: 'Quick Assistant',
         description: 'Voice-activated AI assistant. Ask questions and get instant responses.',
-        requiresApiKey: true
+        requiresApiKey: true,
+        type: 'cli',
+        hotkeyArg: '--ptt-key'
     },
     {
         id: 'flatten-string',
         name: 'Flatten String',
         description: 'Flatten clipboard text by removing newlines and extra whitespace. Great for code or quotes.',
-        requiresApiKey: false
+        requiresApiKey: false,
+        type: 'cli',
+        hotkeyArg: '--trigger-key'
     },
     {
         id: 'typo-fix',
         name: 'Typo Fix',
         description: 'Fix typos in selected text using AI. Select text, press hotkey, get corrected text.',
-        requiresApiKey: true
+        requiresApiKey: true,
+        type: 'gui',
+        hotkeyNote: 'Configure in TypoFix settings'
     },
     {
         id: 'ocr-paste',
         name: 'OCR Paste',
         description: 'Extract text from clipboard images using OCR. Copy an image, press hotkey, get the text.',
-        requiresApiKey: true
+        requiresApiKey: true,
+        type: 'gui',
+        hotkeyNote: 'Configure in OCR Paste settings'
     }
+];
+
+// Available hotkeys
+const HOTKEY_OPTIONS = [
+    { value: '', label: 'Not Set' },
+    { value: 'F13', label: 'F13' },
+    { value: 'F14', label: 'F14' },
+    { value: 'F15', label: 'F15' },
+    { value: 'F16', label: 'F16' },
+    { value: 'F17', label: 'F17' },
+    { value: 'F18', label: 'F18' },
+    { value: 'F19', label: 'F19' },
+    { value: 'F20', label: 'F20' },
+    { value: 'F21', label: 'F21' },
+    { value: 'F22', label: 'F22' },
+    { value: 'F23', label: 'F23' },
+    { value: 'F24', label: 'F24' },
+    { value: 'Insert', label: 'Insert' },
+    { value: 'Delete', label: 'Delete' },
+    { value: 'Home', label: 'Home' },
+    { value: 'End', label: 'End' },
+    { value: 'PageUp', label: 'Page Up' },
+    { value: 'PageDown', label: 'Page Down' },
+    { value: 'ScrollLock', label: 'Scroll Lock' },
+    { value: 'Pause', label: 'Pause' },
 ];
 
 // State
@@ -50,14 +87,12 @@ let tauriReady = false;
 
 // Initialize Tauri API
 function initTauri() {
-    // Tauri 2.x uses __TAURI_INTERNALS__ 
     if (window.__TAURI_INTERNALS__) {
         invoke = window.__TAURI_INTERNALS__.invoke;
         tauriReady = true;
         console.log('Tauri API initialized (INTERNALS)');
         return true;
     }
-    // Fallback for other Tauri 2.x structures
     if (window.__TAURI__ && window.__TAURI__.core) {
         invoke = window.__TAURI__.core.invoke;
         tauriReady = true;
@@ -78,28 +113,24 @@ function initTauri() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM loaded, initializing...');
     
-    // Setup tabs first (doesn't need Tauri)
     setupTabs();
-    
-    // Render tools immediately with default status
     renderTools();
     renderAutoStartTools();
+    renderHotkeyConfig();
     
-    // Initialize Tauri
     if (initTauri()) {
         try {
             await loadConfig();
             await loadToolStatuses();
-            renderTools(); // Re-render with actual statuses
+            renderTools();
             renderAutoStartTools();
+            renderHotkeyConfig();
         } catch (e) {
             console.error('Failed to load initial data:', e);
         }
         
-        // Setup event listeners that need Tauri
         setupEventListeners();
         
-        // Poll for status updates
         setInterval(async () => {
             try {
                 await loadToolStatuses();
@@ -108,7 +139,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }, 2000);
     } else {
-        // Show error to user
         const grid = document.getElementById('toolsGrid');
         grid.innerHTML = '<p style="color: var(--error); padding: 20px;">Failed to connect to Tauri backend. Please restart the application.</p>';
     }
@@ -119,26 +149,18 @@ function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     
-    console.log('Setting up tabs:', tabButtons.length, 'buttons,', tabContents.length, 'contents');
-    
     tabButtons.forEach(button => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
             const tabId = button.dataset.tab;
-            console.log('Tab clicked:', tabId);
             
-            // Remove active from all
             tabButtons.forEach(btn => btn.classList.remove('active'));
             tabContents.forEach(content => content.classList.remove('active'));
             
-            // Add active to clicked
             button.classList.add('active');
             const targetContent = document.getElementById(tabId);
             if (targetContent) {
                 targetContent.classList.add('active');
-                console.log('Activated tab:', tabId);
-            } else {
-                console.error('Tab content not found:', tabId);
             }
         });
     });
@@ -152,21 +174,18 @@ async function loadConfig() {
         config = await invoke('get_config');
         console.log('Config loaded:', config);
         
-        // Apply settings to UI
         const autoStartEl = document.getElementById('autoStart');
         const startMinEl = document.getElementById('startMinimized');
         const darkModeEl = document.getElementById('darkMode');
         
         if (autoStartEl) autoStartEl.checked = config.auto_start || false;
         if (startMinEl) startMinEl.checked = config.start_minimized || false;
-        if (darkModeEl) darkModeEl.checked = config.dark_mode !== false; // Default to dark
+        if (darkModeEl) darkModeEl.checked = config.dark_mode !== false;
         
-        // Apply dark mode (default is dark, so only add light-mode if explicitly disabled)
         if (config.dark_mode === false) {
             document.body.classList.add('light-mode');
         }
         
-        // Check if API key exists
         try {
             const hasApiKey = await invoke('has_api_key');
             if (hasApiKey) {
@@ -187,7 +206,6 @@ async function loadToolStatuses() {
     
     try {
         toolStatuses = await invoke('get_tool_statuses');
-        console.log('Tool statuses:', toolStatuses);
         updateToolCards();
     } catch (e) {
         console.error('Failed to load tool statuses:', e);
@@ -197,21 +215,30 @@ async function loadToolStatuses() {
 // Render tools grid
 function renderTools() {
     const grid = document.getElementById('toolsGrid');
-    if (!grid) {
-        console.error('Tools grid not found!');
-        return;
-    }
+    if (!grid) return;
     
-    console.log('Rendering', TOOLS.length, 'tools');
     grid.innerHTML = '';
     
     TOOLS.forEach(tool => {
         const status = toolStatuses[tool.id] || 'Stopped';
         const isRunning = status === 'Running';
+        const toolConfig = config.tools?.[tool.id] || {};
+        const hasHotkey = toolConfig.hotkey || toolConfig.special_hotkey || tool.type === 'gui';
         
         const card = document.createElement('div');
         card.className = `tool-card ${isRunning ? 'running' : ''}`;
         card.id = `tool-${tool.id}`;
+        
+        let hotkeyInfo = '';
+        if (tool.type === 'cli') {
+            if (toolConfig.hotkey) {
+                hotkeyInfo = `<span class="hotkey-badge">${toolConfig.hotkey}</span>`;
+            } else if (toolConfig.special_hotkey) {
+                hotkeyInfo = `<span class="hotkey-badge">Key ${toolConfig.special_hotkey}</span>`;
+            } else {
+                hotkeyInfo = `<span class="hotkey-badge missing">No hotkey set</span>`;
+            }
+        }
         
         card.innerHTML = `
             <div class="tool-header">
@@ -222,10 +249,12 @@ function renderTools() {
                 </span>
             </div>
             <p class="tool-description">${tool.description}</p>
+            ${hotkeyInfo}
             ${tool.requiresApiKey ? '<p class="hint">Requires OpenAI API key</p>' : ''}
             <div class="tool-actions">
                 <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
-                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}">
+                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
+                        ${!hasHotkey && tool.type === 'cli' ? 'disabled title="Set hotkey first"' : ''}>
                     ${isRunning ? 'Stop' : 'Start'}
                 </button>
                 <button class="btn btn-secondary" onclick="openToolSettings('${tool.id}')">Settings</button>
@@ -234,11 +263,9 @@ function renderTools() {
         
         grid.appendChild(card);
     });
-    
-    console.log('Tools rendered');
 }
 
-// Update tool cards (just status, not full re-render)
+// Update tool cards
 function updateToolCards() {
     TOOLS.forEach(tool => {
         const card = document.getElementById(`tool-${tool.id}`);
@@ -246,6 +273,8 @@ function updateToolCards() {
         
         const status = toolStatuses[tool.id] || 'Stopped';
         const isRunning = status === 'Running';
+        const toolConfig = config.tools?.[tool.id] || {};
+        const hasHotkey = toolConfig.hotkey || toolConfig.special_hotkey || tool.type === 'gui';
         
         card.className = `tool-card ${isRunning ? 'running' : ''}`;
         
@@ -259,7 +288,8 @@ function updateToolCards() {
         if (actionsEl) {
             actionsEl.innerHTML = `
                 <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
-                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}">
+                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
+                        ${!hasHotkey && tool.type === 'cli' ? 'disabled title="Set hotkey first"' : ''}>
                     ${isRunning ? 'Stop' : 'Start'}
                 </button>
                 <button class="btn btn-secondary" onclick="openToolSettings('${tool.id}')">Settings</button>
@@ -286,6 +316,54 @@ function renderAutoStartTools() {
             <span>${tool.name}</span>
         `;
         container.appendChild(label);
+    });
+}
+
+// Render hotkey configuration
+function renderHotkeyConfig() {
+    const container = document.getElementById('hotkeyConfig');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    TOOLS.forEach(tool => {
+        const toolConfig = config.tools?.[tool.id] || {};
+        const row = document.createElement('div');
+        row.className = 'hotkey-row';
+        
+        if (tool.type === 'gui') {
+            row.innerHTML = `
+                <div class="tool-info">
+                    <div class="tool-name">${tool.name}</div>
+                    <div class="tool-type gui">GUI App</div>
+                </div>
+                <div style="color: var(--text-muted); font-size: 13px;">
+                    ${tool.hotkeyNote}
+                </div>
+            `;
+        } else {
+            const currentHotkey = toolConfig.hotkey || '';
+            const specialKey = toolConfig.special_hotkey || '';
+            
+            let optionsHtml = HOTKEY_OPTIONS.map(opt => 
+                `<option value="${opt.value}" ${currentHotkey === opt.value ? 'selected' : ''}>${opt.label}</option>`
+            ).join('');
+            
+            row.innerHTML = `
+                <div class="tool-info">
+                    <div class="tool-name">${tool.name}</div>
+                    <div class="tool-type cli">CLI Tool (requires hotkey)</div>
+                </div>
+                <select id="hotkey-${tool.id}">
+                    ${optionsHtml}
+                </select>
+                <span class="or-label">or code:</span>
+                <input type="number" class="special-key-input" id="special-${tool.id}" 
+                       placeholder="e.g. 123" value="${specialKey}" min="0" max="65535">
+            `;
+        }
+        
+        container.appendChild(row);
     });
 }
 
@@ -386,7 +464,6 @@ function setupEventListeners() {
             const status = document.getElementById('settingsStatus');
             
             try {
-                // Gather settings
                 const newConfig = {
                     auto_start: document.getElementById('autoStart')?.checked || false,
                     start_minimized: document.getElementById('startMinimized')?.checked || false,
@@ -394,12 +471,15 @@ function setupEventListeners() {
                     tools: {}
                 };
                 
-                // Gather auto-start settings for each tool
+                // Preserve existing hotkey settings, update auto_start
                 TOOLS.forEach(tool => {
                     const checkbox = document.getElementById(`autoStart-${tool.id}`);
+                    const existingConfig = config.tools?.[tool.id] || {};
                     newConfig.tools[tool.id] = {
                         enabled: true,
-                        auto_start: checkbox ? checkbox.checked : false
+                        auto_start: checkbox ? checkbox.checked : false,
+                        hotkey: existingConfig.hotkey || null,
+                        special_hotkey: existingConfig.special_hotkey || null
                     };
                 });
                 
@@ -418,9 +498,68 @@ function setupEventListeners() {
             }
         });
     }
+    
+    // Save hotkeys
+    const saveHotkeysBtn = document.getElementById('saveHotkeysBtn');
+    if (saveHotkeysBtn) {
+        saveHotkeysBtn.addEventListener('click', async () => {
+            const status = document.getElementById('hotkeysStatus');
+            
+            try {
+                const newConfig = {
+                    auto_start: config.auto_start || false,
+                    start_minimized: config.start_minimized || false,
+                    dark_mode: config.dark_mode !== false,
+                    tools: {}
+                };
+                
+                TOOLS.forEach(tool => {
+                    const existingConfig = config.tools?.[tool.id] || {};
+                    let hotkey = null;
+                    let specialHotkey = null;
+                    
+                    if (tool.type === 'cli') {
+                        const hotkeySelect = document.getElementById(`hotkey-${tool.id}`);
+                        const specialInput = document.getElementById(`special-${tool.id}`);
+                        
+                        if (hotkeySelect && hotkeySelect.value) {
+                            hotkey = hotkeySelect.value;
+                        }
+                        if (specialInput && specialInput.value) {
+                            specialHotkey = parseInt(specialInput.value) || null;
+                        }
+                    }
+                    
+                    newConfig.tools[tool.id] = {
+                        enabled: true,
+                        auto_start: existingConfig.auto_start || false,
+                        hotkey: hotkey,
+                        special_hotkey: specialHotkey
+                    };
+                });
+                
+                await invoke('save_config', { config: newConfig });
+                config = newConfig;
+                
+                // Re-render to update UI
+                renderTools();
+                renderHotkeyConfig();
+                
+                if (status) {
+                    status.textContent = 'Hotkeys saved! Restart tools for changes to take effect.';
+                    status.className = 'status success';
+                }
+            } catch (e) {
+                if (status) {
+                    status.textContent = `Error: ${e}`;
+                    status.className = 'status error';
+                }
+            }
+        });
+    }
 }
 
-// Tool actions (global functions for onclick handlers)
+// Tool actions
 window.startTool = async function(toolId) {
     if (!tauriReady) {
         alert('Tauri not ready');
@@ -454,15 +593,14 @@ window.stopTool = async function(toolId) {
 };
 
 window.openToolSettings = async function(toolId) {
-    if (!tauriReady) {
-        alert('Tauri not ready');
+    const tool = TOOLS.find(t => t.id === toolId);
+    
+    if (tool && tool.type === 'cli') {
+        // For CLI tools, switch to hotkeys tab
+        document.querySelector('[data-tab="hotkeys"]').click();
         return;
     }
     
-    try {
-        await invoke('open_tool_settings', { toolId });
-    } catch (e) {
-        console.error(`Failed to open settings for ${toolId}:`, e);
-        alert(`This tool doesn't have a separate settings window. Start the tool and use its tray icon for settings.`);
-    }
+    // For GUI tools, show a message
+    alert(`Start ${tool?.name || toolId} and use its system tray icon to access settings.`);
 };

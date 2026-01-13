@@ -1,7 +1,7 @@
 //! Process Manager - Start, stop, and monitor tool processes
 
 use anyhow::{Context, Result};
-use hub_common::{config, ToolId, ToolStatus};
+use hub_common::{config, ToolConfig, ToolId, ToolStatus};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Child, Command};
@@ -25,8 +25,13 @@ impl ProcessManager {
         }
     }
 
-    /// Start a tool process
+    /// Start a tool process with optional configuration
     pub fn start_tool(&mut self, tool_id: &ToolId) -> Result<()> {
+        self.start_tool_with_config(tool_id, &ToolConfig::default())
+    }
+
+    /// Start a tool process with specific configuration
+    pub fn start_tool_with_config(&mut self, tool_id: &ToolId, tool_config: &ToolConfig) -> Result<()> {
         // Check if already running
         if let Some(proc) = self.processes.get_mut(tool_id) {
             // Check if process is still alive
@@ -51,7 +56,7 @@ impl ProcessManager {
 
         println!("Starting {} from {:?}", tool_id.display_name(), binary_path);
 
-        // Set up environment with shared API key
+        // Set up the command
         let mut cmd = Command::new(&binary_path);
 
         // Pass the API key via environment variable if available
@@ -60,6 +65,9 @@ impl ProcessManager {
                 cmd.env("OPENAI_API_KEY", api_key);
             }
         }
+
+        // Add hotkey arguments based on tool type
+        self.add_hotkey_args(&mut cmd, tool_id, tool_config);
 
         // Start the process
         let child = cmd
@@ -75,6 +83,42 @@ impl ProcessManager {
         );
 
         Ok(())
+    }
+
+    /// Add hotkey command-line arguments based on tool type
+    fn add_hotkey_args(&self, cmd: &mut Command, tool_id: &ToolId, tool_config: &ToolConfig) {
+        // Skip for GUI apps that have their own config (desk-talk, typo-fix, ocr-paste)
+        // These tools read from their own config files
+        match tool_id {
+            ToolId::DeskTalk | ToolId::TypoFix | ToolId::OcrPaste => {
+                // These have their own GUI config, don't pass CLI args
+                return;
+            }
+            _ => {}
+        }
+
+        // For CLI tools, pass the hotkey as an argument
+        if let Some(ref hotkey) = tool_config.hotkey {
+            let arg_name = match tool_id {
+                ToolId::SpeakSelected => "--ptt-key",
+                ToolId::QuickAssistant => "--ptt-key",
+                ToolId::FlattenString => "--trigger-key",
+                _ => return,
+            };
+            cmd.arg(arg_name).arg(hotkey);
+            println!("  Passing hotkey: {} {}", arg_name, hotkey);
+        } else if let Some(special_key) = tool_config.special_hotkey {
+            let arg_name = match tool_id {
+                ToolId::SpeakSelected => "--special-ptt-key",
+                ToolId::QuickAssistant => "--special-ptt-key",
+                // flatten-string doesn't support special keys
+                _ => return,
+            };
+            cmd.arg(arg_name).arg(special_key.to_string());
+            println!("  Passing special hotkey: {} {}", arg_name, special_key);
+        } else {
+            println!("  Warning: No hotkey configured for {}", tool_id.display_name());
+        }
     }
 
     /// Stop a tool process

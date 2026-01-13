@@ -19,6 +19,10 @@ pub struct FrontendConfig {
 pub struct FrontendToolConfig {
     pub enabled: bool,
     pub auto_start: bool,
+    #[serde(default)]
+    pub hotkey: Option<String>,
+    #[serde(default)]
+    pub special_hotkey: Option<u32>,
 }
 
 impl From<HubConfig> for FrontendConfig {
@@ -40,6 +44,8 @@ impl From<HubConfig> for FrontendConfig {
                     FrontendToolConfig {
                         enabled: tc.enabled,
                         auto_start: tc.auto_start,
+                        hotkey: tc.hotkey,
+                        special_hotkey: tc.special_hotkey,
                     },
                 )
             })
@@ -87,6 +93,8 @@ pub fn save_config(state: State<AppState>, config: FrontendConfig) -> Result<(),
                 ToolConfig {
                     enabled: tc.enabled,
                     auto_start: tc.auto_start,
+                    hotkey: tc.hotkey,
+                    special_hotkey: tc.special_hotkey,
                     settings: serde_json::Value::Null,
                 },
             );
@@ -188,8 +196,15 @@ pub fn get_tool_statuses(state: State<AppState>) -> HashMap<String, String> {
 #[tauri::command]
 pub fn start_tool(state: State<AppState>, tool_id: String) -> Result<(), String> {
     let tool = string_to_tool_id(&tool_id).ok_or("Unknown tool")?;
+    
+    // Get the tool's configuration (including hotkey)
+    let tool_config = {
+        let config = state.config.read();
+        config.get_tool_config(&tool)
+    };
+    
     let mut pm = state.process_manager.write();
-    pm.start_tool(&tool).map_err(|e| e.to_string())
+    pm.start_tool_with_config(&tool, &tool_config).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -59,6 +59,14 @@ pub struct ToolConfig {
     #[serde(default)]
     pub auto_start: bool,
     
+    /// The hotkey/trigger key for this tool (as a string like "F13", "F14", etc.)
+    #[serde(default)]
+    pub hotkey: Option<String>,
+    
+    /// Special hotkey code (for keys not in the standard enum)
+    #[serde(default)]
+    pub special_hotkey: Option<u32>,
+    
     /// Tool-specific settings (stored as JSON value for flexibility)
     #[serde(default)]
     pub settings: serde_json::Value,
@@ -73,6 +81,8 @@ impl Default for ToolConfig {
         Self {
             enabled: true,
             auto_start: false,
+            hotkey: None,
+            special_hotkey: None,
             settings: serde_json::Value::Null,
         }
     }
