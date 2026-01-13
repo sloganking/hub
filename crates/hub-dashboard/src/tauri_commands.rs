@@ -120,8 +120,29 @@ pub fn has_api_key() -> bool {
 }
 
 #[tauri::command]
+pub fn get_api_key_masked() -> Option<String> {
+    config::load_api_key().ok().map(|key| {
+        if key.len() > 8 {
+            format!("{}...{}", &key[..4], &key[key.len()-4..])
+        } else {
+            "••••••••".to_string()
+        }
+    })
+}
+
+#[tauri::command]
+pub fn get_api_key() -> Result<String, String> {
+    config::load_api_key().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn save_api_key(api_key: String) -> Result<(), String> {
     config::save_api_key(&api_key).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_api_key() -> Result<(), String> {
+    config::delete_api_key().map_err(|e| e.to_string())
 }
 
 #[derive(Serialize)]

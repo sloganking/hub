@@ -249,11 +249,31 @@ async function loadConfig() {
         }
         
         hasApiKey = await invoke('has_api_key');
-        if (hasApiKey) {
-            document.getElementById('apiKey').placeholder = '••••••••••••••••';
-        }
+        updateApiKeyUI();
     } catch (e) {
         console.error('Failed to load config:', e);
+    }
+}
+
+async function updateApiKeyUI() {
+    const notSetDiv = document.getElementById('apiKeyNotSet');
+    const isSetDiv = document.getElementById('apiKeyIsSet');
+    const maskedSpan = document.getElementById('apiKeyMasked');
+    
+    if (hasApiKey) {
+        notSetDiv.style.display = 'none';
+        isSetDiv.style.display = 'block';
+        try {
+            const masked = await invoke('get_api_key_masked');
+            maskedSpan.textContent = masked || '••••••••••••••••';
+            maskedSpan.dataset.revealed = 'false';
+        } catch (e) {
+            maskedSpan.textContent = '••••••••••••••••';
+        }
+    } else {
+        notSetDiv.style.display = 'block';
+        isSetDiv.style.display = 'none';
+        document.getElementById('apiKey').value = '';
     }
 }
 
@@ -458,9 +478,29 @@ function renderAutoStartTools() {
 }
 
 function setupEventListeners() {
-    document.getElementById('toggleApiKey')?.addEventListener('click', () => {
-        const input = document.getElementById('apiKey');
-        if (input) input.type = input.type === 'password' ? 'text' : 'password';
+    document.getElementById('toggleApiKey')?.addEventListener('click', async () => {
+        const maskedSpan = document.getElementById('apiKeyMasked');
+        const isRevealed = maskedSpan.dataset.revealed === 'true';
+        
+        if (isRevealed) {
+            // Hide it
+            try {
+                const masked = await invoke('get_api_key_masked');
+                maskedSpan.textContent = masked || '••••••••••••••••';
+            } catch (e) {
+                maskedSpan.textContent = '••••••••••••••••';
+            }
+            maskedSpan.dataset.revealed = 'false';
+        } else {
+            // Reveal it
+            try {
+                const fullKey = await invoke('get_api_key');
+                maskedSpan.textContent = fullKey;
+                maskedSpan.dataset.revealed = 'true';
+            } catch (e) {
+                console.error('Failed to get API key:', e);
+            }
+        }
     });
     
     document.getElementById('saveApiKeyBtn')?.addEventListener('click', async () => {
@@ -475,10 +515,9 @@ function setupEventListeners() {
             await invoke('save_api_key', { apiKey });
             status.textContent = 'API key saved!';
             status.className = 'status success';
-            document.getElementById('apiKey').value = '';
-            document.getElementById('apiKey').placeholder = '••••••••••••••••';
-            // Update state and re-render tools to enable start buttons
+            // Update state and re-render
             hasApiKey = true;
+            await updateApiKeyUI();
             renderTools();
         } catch (e) {
             status.textContent = `Error: ${e}`;
@@ -486,13 +525,19 @@ function setupEventListeners() {
         }
     });
     
-    document.getElementById('validateApiKeyBtn')?.addEventListener('click', async () => {
+    document.getElementById('deleteApiKeyBtn')?.addEventListener('click', async () => {
         const status = document.getElementById('apiKeyStatus');
-        status.textContent = 'Validating...';
+        if (!confirm('Are you sure you want to delete the API key?')) {
+            return;
+        }
         try {
-            const result = await invoke('validate_api_key');
-            status.textContent = result.valid ? 'API key is valid!' : `Invalid: ${result.error}`;
-            status.className = `status ${result.valid ? 'success' : 'error'}`;
+            await invoke('delete_api_key');
+            status.textContent = 'API key deleted';
+            status.className = 'status success';
+            // Update state and re-render
+            hasApiKey = false;
+            await updateApiKeyUI();
+            renderTools();
         } catch (e) {
             status.textContent = `Error: ${e}`;
             status.className = 'status error';

@@ -298,6 +298,31 @@ input[type="password"]::placeholder {
     flex: 1;
 }
 
+/* API Key Display */
+.api-key-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.api-key-value {
+    flex: 1;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 14px;
+    color: var(--text-primary);
+    letter-spacing: 1px;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
 /* Checkboxes */
 .checkbox {
     display: flex;
