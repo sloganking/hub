@@ -168,6 +168,12 @@ pub async fn validate_api_key() -> ApiKeyValidation {
 
 #[tauri::command]
 pub fn get_tool_statuses(state: State<AppState>) -> HashMap<String, String> {
+    // First refresh to check which processes are still alive
+    {
+        let mut pm = state.process_manager.write();
+        pm.refresh_statuses();
+    }
+    
     let pm = state.process_manager.read();
     let mut statuses = HashMap::new();
 

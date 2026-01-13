@@ -4,7 +4,10 @@ use anyhow::{Context, Result};
 use hub_common::{config, ToolConfig, ToolId, ToolStatus};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 
 /// Manages child processes for all tools
 #[derive(Debug)]
@@ -68,6 +71,26 @@ impl ProcessManager {
 
         // Add hotkey arguments based on tool type
         self.add_hotkey_args(&mut cmd, tool_id, tool_config);
+
+        // Hide console window for CLI tools on Windows
+        #[cfg(windows)]
+        {
+            // CREATE_NO_WINDOW = 0x08000000
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            
+            // Only hide window for CLI tools (GUI tools manage their own windows)
+            match tool_id {
+                ToolId::SpeakSelected | ToolId::QuickAssistant | ToolId::FlattenString | ToolId::OcrPaste => {
+                    cmd.creation_flags(CREATE_NO_WINDOW);
+                }
+                _ => {}
+            }
+        }
+
+        // Redirect stdio to prevent blocking and hide output
+        cmd.stdin(Stdio::null());
+        cmd.stdout(Stdio::null());
+        cmd.stderr(Stdio::null());
 
         // Start the process
         let child = cmd
