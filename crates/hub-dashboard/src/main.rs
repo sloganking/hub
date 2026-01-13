@@ -72,8 +72,6 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
 fn auto_start_tools<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<AppState>();
     let config = state.config.read().clone();
-    
-    // Check if API key exists for tools that need it
     let has_api_key = hub_common::config::has_api_key();
     
     for tool_id in ToolId::all() {
@@ -82,15 +80,11 @@ fn auto_start_tools<R: Runtime>(app: &AppHandle<R>) {
         if tool_config.enabled && tool_config.auto_start {
             // Skip if tool requires API key but we don't have one
             if tool_id.requires_api_key() && !has_api_key {
-                println!("Skipping auto-start for {} (no API key)", tool_id.display_name());
                 continue;
             }
             
-            println!("Auto-starting {}...", tool_id.display_name());
             let mut pm = state.process_manager.write();
-            if let Err(e) = pm.start_tool(tool_id) {
-                eprintln!("Failed to auto-start {}: {}", tool_id.display_name(), e);
-            }
+            let _ = pm.start_tool_with_config(tool_id, &tool_config);
         }
     }
 }
