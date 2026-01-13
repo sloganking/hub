@@ -1,0 +1,11 @@
+Starting with window visible
+Starting Quick Assistant from "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\quick-assistant.exe"
+Looking for binary: quick-assistant.exe
+Current exe: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\hub-dashboard.exe"
+  Checking: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\quick-assistant.exe" - exists: true
+  Passing hotkey: --ptt-key shift-right
+Looking for binary: quick-assistant.exe
+Current exe: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\hub-dashboard.exe"
+  Checking: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\quick-assistant.exe" - exists: true
+Starting Quick Assistant from "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\quick-assistant.exe"
+  Passing hotkey: --ptt-key shift-right

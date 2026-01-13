@@ -210,7 +210,10 @@ pub fn start_tool(state: State<AppState>, tool_id: String) -> Result<(), String>
     };
     
     let mut pm = state.process_manager.write();
-    pm.start_tool_with_config(&tool, &tool_config).map_err(|e| e.to_string())
+    pm.start_tool_with_config(&tool, &tool_config).map_err(|e| {
+        eprintln!("Failed to start {}: {}", tool_id, e);
+        format!("{}: {}", tool_id, e)
+    })
 }
 
 #[tauri::command]

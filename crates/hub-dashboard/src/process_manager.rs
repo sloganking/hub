@@ -228,17 +228,22 @@ impl ProcessManager {
             tool_id.binary_name().to_string()
         };
 
+        eprintln!("Looking for binary: {}", binary_name);
+
         // Try to find relative to current executable (production layout)
         if let Ok(exe_path) = std::env::current_exe() {
+            eprintln!("Current exe: {:?}", exe_path);
             if let Some(exe_dir) = exe_path.parent() {
                 // Same directory as hub (for portable/dev installs)
                 let path = exe_dir.join(&binary_name);
+                eprintln!("  Checking: {:?} - exists: {}", path, path.exists());
                 if path.exists() {
                     return Some(path);
                 }
 
                 // In a 'tools' subdirectory (bundled install)
                 let path = exe_dir.join("tools").join(&binary_name);
+                eprintln!("  Checking: {:?} - exists: {}", path, path.exists());
                 if path.exists() {
                     return Some(path);
                 }
@@ -246,6 +251,7 @@ impl ProcessManager {
                 // Check Tauri resource path
                 // In bundled apps, resources are in: <exe_dir>/resources/tools/
                 let path = exe_dir.join("resources").join("tools").join(&binary_name);
+                eprintln!("  Checking: {:?} - exists: {}", path, path.exists());
                 if path.exists() {
                     return Some(path);
                 }
@@ -254,22 +260,30 @@ impl ProcessManager {
 
         // Try workspace target directories (for development)
         if let Ok(cwd) = std::env::current_dir() {
+            eprintln!("Current working dir: {:?}", cwd);
             let workspace_paths = [
-                // From workspace root
+                // Workspace target directory (cargo builds all workspace members here)
+                cwd.join("target").join("release").join(&binary_name),
+                cwd.join("target").join("debug").join(&binary_name),
+                // From workspace root - submodule's own target
                 cwd.join("tools").join(tool_id_to_folder(tool_id)).join("target").join("release").join(&binary_name),
                 cwd.join("tools").join(tool_id_to_folder(tool_id)).join("target").join("debug").join(&binary_name),
                 // From crates/hub-dashboard (when running with cargo run)
+                cwd.join("..").join("..").join("target").join("release").join(&binary_name),
+                cwd.join("..").join("..").join("target").join("debug").join(&binary_name),
                 cwd.join("..").join("..").join("tools").join(tool_id_to_folder(tool_id)).join("target").join("release").join(&binary_name),
                 cwd.join("..").join("..").join("tools").join(tool_id_to_folder(tool_id)).join("target").join("debug").join(&binary_name),
             ];
 
-            for path in workspace_paths {
+            for path in &workspace_paths {
+                eprintln!("  Checking: {:?} - exists: {}", path, path.exists());
                 if path.exists() {
-                    return Some(path.canonicalize().unwrap_or(path));
+                    return Some(path.canonicalize().unwrap_or(path.clone()));
                 }
             }
         }
 
+        eprintln!("Binary not found!");
         None
     }
 

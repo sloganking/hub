@@ -3,14 +3,10 @@
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    fs,
-    path::PathBuf,
-};
+use std::{collections::HashMap, fs, path::PathBuf};
 
-use crate::tools::ToolId;
 use crate::hotkeys::RegisteredHotkey;
+use crate::tools::ToolId;
 
 /// Main Hub configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,19 +14,19 @@ pub struct HubConfig {
     /// Whether to start Hub with Windows
     #[serde(default)]
     pub auto_start: bool,
-    
+
     /// Whether to start minimized to tray
     #[serde(default)]
     pub start_minimized: bool,
-    
+
     /// Dark mode preference
     #[serde(default)]
     pub dark_mode: bool,
-    
+
     /// Per-tool configuration
     #[serde(default)]
     pub tools: HashMap<ToolId, ToolConfig>,
-    
+
     /// Registered hotkeys for all tools
     #[serde(default)]
     pub hotkeys: Vec<RegisteredHotkey>,
@@ -41,7 +37,7 @@ impl Default for HubConfig {
         Self {
             auto_start: false,
             start_minimized: false,
-            dark_mode: false,
+            dark_mode: true, // Dark mode by default
             tools: HashMap::new(),
             hotkeys: Vec::new(),
         }
@@ -54,19 +50,19 @@ pub struct ToolConfig {
     /// Whether this tool is enabled
     #[serde(default = "default_true")]
     pub enabled: bool,
-    
+
     /// Whether to auto-start this tool when Hub starts
     #[serde(default)]
     pub auto_start: bool,
-    
+
     /// The hotkey/trigger key for this tool (as a string like "F13", "F14", etc.)
     #[serde(default)]
     pub hotkey: Option<String>,
-    
+
     /// Special hotkey code (for keys not in the standard enum)
     #[serde(default)]
     pub special_hotkey: Option<u32>,
-    
+
     /// Tool-specific settings (stored as JSON value for flexibility)
     #[serde(default)]
     pub settings: serde_json::Value,
@@ -106,12 +102,12 @@ impl HubConfig {
     /// Load configuration from disk
     pub fn load() -> Result<Self> {
         let config_path = Self::config_path()?;
-        
+
         if config_path.exists() {
-            let contents = fs::read_to_string(&config_path)
-                .context("Failed to read config file")?;
-            let config: HubConfig = serde_json::from_str(&contents)
-                .context("Failed to parse config file")?;
+            let contents =
+                fs::read_to_string(&config_path).context("Failed to read config file")?;
+            let config: HubConfig =
+                serde_json::from_str(&contents).context("Failed to parse config file")?;
             Ok(config)
         } else {
             Ok(HubConfig::default())
@@ -121,10 +117,8 @@ impl HubConfig {
     /// Save configuration to disk
     pub fn save(&self) -> Result<()> {
         let config_path = Self::config_path()?;
-        let contents = serde_json::to_string_pretty(self)
-            .context("Failed to serialize config")?;
-        fs::write(&config_path, contents)
-            .context("Failed to write config file")?;
+        let contents = serde_json::to_string_pretty(self).context("Failed to serialize config")?;
+        fs::write(&config_path, contents).context("Failed to write config file")?;
         Ok(())
     }
 
@@ -161,12 +155,13 @@ pub fn load_api_key() -> Result<String> {
 pub fn save_api_key(api_key: &str) -> Result<()> {
     let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
         .context("Failed to create keyring entry")?;
-    entry.set_password(api_key)
+    entry
+        .set_password(api_key)
         .context("Failed to save API key to keyring")?;
-    
+
     // Also save to .env as backup
     let _ = save_api_key_to_env(api_key);
-    
+
     Ok(())
 }
 
@@ -174,7 +169,8 @@ pub fn save_api_key(api_key: &str) -> Result<()> {
 pub fn delete_api_key() -> Result<()> {
     let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER)
         .context("Failed to create keyring entry")?;
-    entry.delete_credential()
+    entry
+        .delete_credential()
         .context("Failed to delete API key from keyring")
 }
 
@@ -186,7 +182,7 @@ pub fn has_api_key() -> bool {
 fn load_api_key_from_env() -> Result<String> {
     let config_dir = HubConfig::config_dir()?;
     let env_path = config_dir.join(".env");
-    
+
     if env_path.exists() {
         let contents = fs::read_to_string(&env_path)?;
         for line in contents.lines() {
@@ -195,7 +191,7 @@ fn load_api_key_from_env() -> Result<String> {
             }
         }
     }
-    
+
     Err(anyhow::anyhow!("No API key found in keyring or .env file"))
 }
 
@@ -240,7 +236,9 @@ pub fn disable_autostart() -> Result<()> {
 
 #[cfg(not(windows))]
 pub fn enable_autostart() -> Result<()> {
-    Err(anyhow::anyhow!("Auto-start not implemented for this platform"))
+    Err(anyhow::anyhow!(
+        "Auto-start not implemented for this platform"
+    ))
 }
 
 #[cfg(not(windows))]
