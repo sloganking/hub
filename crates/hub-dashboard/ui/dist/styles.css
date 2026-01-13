@@ -377,6 +377,17 @@ input[type="password"]::placeholder {
     font-size: 12px;
 }
 
+.btn-toggle-key {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    font-size: 16px;
+}
+
+.btn-toggle-key:hover {
+    background: var(--accent-muted);
+    border-color: var(--accent);
+}
+
 /* Checkboxes */
 .checkbox {
     display: flex;

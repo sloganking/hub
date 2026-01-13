@@ -495,6 +495,7 @@ function renderAutoStartTools() {
 function setupEventListeners() {
     document.getElementById('toggleApiKey')?.addEventListener('click', async () => {
         const maskedSpan = document.getElementById('apiKeyMasked');
+        const toggleBtn = document.getElementById('toggleApiKey');
         const isRevealed = maskedSpan.dataset.revealed === 'true';
         
         if (isRevealed) {
@@ -506,12 +507,16 @@ function setupEventListeners() {
                 maskedSpan.textContent = '••••••••••••••••';
             }
             maskedSpan.dataset.revealed = 'false';
+            toggleBtn.textContent = '👁️';
+            toggleBtn.title = 'Show';
         } else {
             // Reveal it
             try {
                 const fullKey = await invoke('get_api_key');
                 maskedSpan.textContent = fullKey;
                 maskedSpan.dataset.revealed = 'true';
+                toggleBtn.textContent = '🙈';
+                toggleBtn.title = 'Hide';
             } catch (e) {
                 console.error('Failed to get API key:', e);
             }
