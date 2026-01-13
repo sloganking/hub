@@ -414,7 +414,8 @@ impl Default for ProcessManager {
 
 impl Drop for ProcessManager {
     fn drop(&mut self) {
-        self.stop_all();
+        // Don't stop tools when hub exits - let them keep running
+        // The user can stop them manually or they'll be detected on next hub launch
     }
 }
 

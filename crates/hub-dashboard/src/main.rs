@@ -62,12 +62,7 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             }
         }
         "quit" => {
-            // Stop all running tools before quitting
-            let state = app.state::<AppState>();
-            let mut pm = state.process_manager.write();
-            for tool_id in ToolId::all() {
-                let _ = pm.stop_tool(tool_id);
-            }
+            // Don't stop tools - let them keep running
             app.exit(0);
         }
         _ => {}
