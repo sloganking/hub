@@ -376,26 +376,28 @@ function updateToolCards() {
         
         const status = toolStatuses[tool.id] || 'Stopped';
         const isRunning = status === 'Running';
+        const isPending = status === 'Starting...' || status === 'Stopping...';
         const toolConfig = config.tools?.[tool.id] || {};
         const hasHotkeySet = toolConfig.hotkey || tool.type === 'gui';
         const needsApiKeyButMissing = tool.requiresApiKey && !hasApiKey;
         const canStart = hasHotkeySet && !needsApiKeyButMissing;
         
-        card.className = `tool-card ${isRunning ? 'running' : ''}`;
+        card.className = `tool-card ${isRunning ? 'running' : ''} ${isPending ? 'pending' : ''}`;
         
         const statusEl = card.querySelector('.tool-status');
         if (statusEl) {
-            statusEl.className = `tool-status ${isRunning ? 'running' : 'stopped'}`;
-            statusEl.innerHTML = `<span class="status-dot"></span>${status}`;
+            const statusClass = isPending ? 'pending' : (isRunning ? 'running' : 'stopped');
+            statusEl.className = `tool-status ${statusClass}`;
+            statusEl.innerHTML = `<span class="status-dot ${isPending ? 'spinning' : ''}"></span>${status}`;
         }
         
-        // Disable hotkey select when running
+        // Disable hotkey select when running or pending
         const select = card.querySelector('.hotkey-select');
-        if (select) select.disabled = isRunning;
+        if (select) select.disabled = isRunning || isPending;
         
         // Determine what's blocking the start
         let blockReason = '';
-        if (!isRunning) {
+        if (!isRunning && !isPending) {
             if (needsApiKeyButMissing) {
                 blockReason = 'Set API key in Settings first';
             } else if (!hasHotkeySet) {
@@ -405,13 +407,23 @@ function updateToolCards() {
         
         const actionsEl = card.querySelector('.tool-actions');
         if (actionsEl) {
-            actionsEl.innerHTML = `
-                <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
-                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
-                        ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
-                    ${isRunning ? 'Stop' : 'Start'}
-                </button>
-            `;
+            if (isPending) {
+                // Show pending button with spinner
+                const btnClass = status === 'Starting...' ? 'btn-pending-start' : 'btn-pending-stop';
+                actionsEl.innerHTML = `
+                    <button class="btn ${btnClass}" disabled>
+                        <span class="spinner"></span> ${status}
+                    </button>
+                `;
+            } else {
+                actionsEl.innerHTML = `
+                    <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
+                            onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
+                            ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
+                        ${isRunning ? 'Stop' : 'Start'}
+                    </button>
+                `;
+            }
         }
         
         // Update block reason
@@ -584,22 +596,42 @@ function setupEventListeners() {
 
 window.startTool = async function(toolId) {
     if (!tauriReady) return;
-    try {
-        await invoke('start_tool', { toolId });
-        toolStatuses[toolId] = 'Starting';
-        updateToolCards();
-    } catch (e) {
-        alert(`Failed to start tool: ${e}`);
-    }
+    
+    // Show pending state immediately
+    toolStatuses[toolId] = 'Starting...';
+    updateToolCards();
+    
+    // Use setTimeout to let the UI update before the blocking call
+    setTimeout(async () => {
+        try {
+            await invoke('start_tool', { toolId });
+            toolStatuses[toolId] = 'Running';
+            updateToolCards();
+        } catch (e) {
+            toolStatuses[toolId] = 'Stopped';
+            updateToolCards();
+            alert(`Failed to start tool: ${e}`);
+        }
+    }, 10);
 };
 
 window.stopTool = async function(toolId) {
     if (!tauriReady) return;
-    try {
-        await invoke('stop_tool', { toolId });
-        toolStatuses[toolId] = 'Stopped';
-        updateToolCards();
-    } catch (e) {
-        alert(`Failed to stop tool: ${e}`);
-    }
+    
+    // Show pending state immediately
+    toolStatuses[toolId] = 'Stopping...';
+    updateToolCards();
+    
+    // Use setTimeout to let the UI update before the blocking call
+    setTimeout(async () => {
+        try {
+            await invoke('stop_tool', { toolId });
+            toolStatuses[toolId] = 'Stopped';
+            updateToolCards();
+        } catch (e) {
+            toolStatuses[toolId] = 'Running';
+            updateToolCards();
+            alert(`Failed to stop tool: ${e}`);
+        }
+    }, 10);
 };

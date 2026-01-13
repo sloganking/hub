@@ -201,6 +201,60 @@ header h1 {
     50% { opacity: 0.5; }
 }
 
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.tool-status.pending {
+    color: var(--warning);
+}
+
+.status-dot.spinning {
+    animation: spin 1s linear infinite;
+    border: 2px solid var(--warning);
+    border-top-color: transparent;
+    background: transparent !important;
+}
+
+.tool-card.pending {
+    border-color: var(--warning);
+}
+
+.tool-card.pending::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--warning);
+}
+
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.btn-pending-start {
+    background: var(--warning);
+    color: #000;
+    cursor: wait;
+}
+
+.btn-pending-stop {
+    background: var(--warning);
+    color: #000;
+    cursor: wait;
+}
+
 .tool-description {
     font-size: 13px;
     color: var(--text-secondary);
