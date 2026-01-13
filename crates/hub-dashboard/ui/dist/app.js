@@ -1,6 +1,7 @@
 // Productivity Hub Dashboard
 
-const { invoke } = window.__TAURI__.core;
+// Tauri API - handle both Tauri 2.x API structures
+let invoke;
 
 // Tool definitions
 const TOOLS = [
@@ -45,18 +46,72 @@ const TOOLS = [
 // State
 let toolStatuses = {};
 let config = {};
+let tauriReady = false;
+
+// Initialize Tauri API
+function initTauri() {
+    // Tauri 2.x uses __TAURI_INTERNALS__ 
+    if (window.__TAURI_INTERNALS__) {
+        invoke = window.__TAURI_INTERNALS__.invoke;
+        tauriReady = true;
+        console.log('Tauri API initialized (INTERNALS)');
+        return true;
+    }
+    // Fallback for other Tauri 2.x structures
+    if (window.__TAURI__ && window.__TAURI__.core) {
+        invoke = window.__TAURI__.core.invoke;
+        tauriReady = true;
+        console.log('Tauri API initialized (core)');
+        return true;
+    }
+    if (window.__TAURI__ && window.__TAURI__.tauri) {
+        invoke = window.__TAURI__.tauri.invoke;
+        tauriReady = true;
+        console.log('Tauri API initialized (tauri)');
+        return true;
+    }
+    console.error('Tauri API not available');
+    return false;
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM loaded, initializing...');
+    
+    // Setup tabs first (doesn't need Tauri)
     setupTabs();
-    await loadConfig();
-    await loadToolStatuses();
+    
+    // Render tools immediately with default status
     renderTools();
     renderAutoStartTools();
-    setupEventListeners();
     
-    // Poll for status updates
-    setInterval(loadToolStatuses, 2000);
+    // Initialize Tauri
+    if (initTauri()) {
+        try {
+            await loadConfig();
+            await loadToolStatuses();
+            renderTools(); // Re-render with actual statuses
+            renderAutoStartTools();
+        } catch (e) {
+            console.error('Failed to load initial data:', e);
+        }
+        
+        // Setup event listeners that need Tauri
+        setupEventListeners();
+        
+        // Poll for status updates
+        setInterval(async () => {
+            try {
+                await loadToolStatuses();
+            } catch (e) {
+                console.error('Status poll failed:', e);
+            }
+        }, 2000);
+    } else {
+        // Show error to user
+        const grid = document.getElementById('toolsGrid');
+        grid.innerHTML = '<p style="color: var(--error); padding: 20px;">Failed to connect to Tauri backend. Please restart the application.</p>';
+    }
 });
 
 // Tab navigation
@@ -64,38 +119,62 @@ function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     
+    console.log('Setting up tabs:', tabButtons.length, 'buttons,', tabContents.length, 'contents');
+    
     tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
             const tabId = button.dataset.tab;
+            console.log('Tab clicked:', tabId);
             
+            // Remove active from all
             tabButtons.forEach(btn => btn.classList.remove('active'));
             tabContents.forEach(content => content.classList.remove('active'));
             
+            // Add active to clicked
             button.classList.add('active');
-            document.getElementById(tabId).classList.add('active');
+            const targetContent = document.getElementById(tabId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+                console.log('Activated tab:', tabId);
+            } else {
+                console.error('Tab content not found:', tabId);
+            }
         });
     });
 }
 
 // Load configuration
 async function loadConfig() {
+    if (!tauriReady) return;
+    
     try {
         config = await invoke('get_config');
+        console.log('Config loaded:', config);
         
         // Apply settings to UI
-        document.getElementById('autoStart').checked = config.auto_start || false;
-        document.getElementById('startMinimized').checked = config.start_minimized || false;
-        document.getElementById('darkMode').checked = config.dark_mode || false;
+        const autoStartEl = document.getElementById('autoStart');
+        const startMinEl = document.getElementById('startMinimized');
+        const darkModeEl = document.getElementById('darkMode');
         
-        // Apply dark mode
-        if (!config.dark_mode) {
+        if (autoStartEl) autoStartEl.checked = config.auto_start || false;
+        if (startMinEl) startMinEl.checked = config.start_minimized || false;
+        if (darkModeEl) darkModeEl.checked = config.dark_mode !== false; // Default to dark
+        
+        // Apply dark mode (default is dark, so only add light-mode if explicitly disabled)
+        if (config.dark_mode === false) {
             document.body.classList.add('light-mode');
         }
         
         // Check if API key exists
-        const hasApiKey = await invoke('has_api_key');
-        if (hasApiKey) {
-            document.getElementById('apiKey').placeholder = '••••••••••••••••';
+        try {
+            const hasApiKey = await invoke('has_api_key');
+            if (hasApiKey) {
+                const apiKeyEl = document.getElementById('apiKey');
+                if (apiKeyEl) apiKeyEl.placeholder = '••••••••••••••••';
+            }
+        } catch (e) {
+            console.error('Failed to check API key:', e);
         }
     } catch (e) {
         console.error('Failed to load config:', e);
@@ -104,8 +183,11 @@ async function loadConfig() {
 
 // Load tool statuses
 async function loadToolStatuses() {
+    if (!tauriReady) return;
+    
     try {
         toolStatuses = await invoke('get_tool_statuses');
+        console.log('Tool statuses:', toolStatuses);
         updateToolCards();
     } catch (e) {
         console.error('Failed to load tool statuses:', e);
@@ -115,6 +197,12 @@ async function loadToolStatuses() {
 // Render tools grid
 function renderTools() {
     const grid = document.getElementById('toolsGrid');
+    if (!grid) {
+        console.error('Tools grid not found!');
+        return;
+    }
+    
+    console.log('Rendering', TOOLS.length, 'tools');
     grid.innerHTML = '';
     
     TOOLS.forEach(tool => {
@@ -136,16 +224,18 @@ function renderTools() {
             <p class="tool-description">${tool.description}</p>
             ${tool.requiresApiKey ? '<p class="hint">Requires OpenAI API key</p>' : ''}
             <div class="tool-actions">
-                ${isRunning 
-                    ? `<button class="btn btn-danger" onclick="stopTool('${tool.id}')">Stop</button>`
-                    : `<button class="btn btn-success" onclick="startTool('${tool.id}')">Start</button>`
-                }
+                <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
+                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}">
+                    ${isRunning ? 'Stop' : 'Start'}
+                </button>
                 <button class="btn btn-secondary" onclick="openToolSettings('${tool.id}')">Settings</button>
             </div>
         `;
         
         grid.appendChild(card);
     });
+    
+    console.log('Tools rendered');
 }
 
 // Update tool cards (just status, not full re-render)
@@ -160,23 +250,29 @@ function updateToolCards() {
         card.className = `tool-card ${isRunning ? 'running' : ''}`;
         
         const statusEl = card.querySelector('.tool-status');
-        statusEl.className = `tool-status ${isRunning ? 'running' : 'stopped'}`;
-        statusEl.innerHTML = `<span class="status-dot"></span>${status}`;
+        if (statusEl) {
+            statusEl.className = `tool-status ${isRunning ? 'running' : 'stopped'}`;
+            statusEl.innerHTML = `<span class="status-dot"></span>${status}`;
+        }
         
         const actionsEl = card.querySelector('.tool-actions');
-        actionsEl.innerHTML = `
-            ${isRunning 
-                ? `<button class="btn btn-danger" onclick="stopTool('${tool.id}')">Stop</button>`
-                : `<button class="btn btn-success" onclick="startTool('${tool.id}')">Start</button>`
-            }
-            <button class="btn btn-secondary" onclick="openToolSettings('${tool.id}')">Settings</button>
-        `;
+        if (actionsEl) {
+            actionsEl.innerHTML = `
+                <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
+                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}">
+                    ${isRunning ? 'Stop' : 'Start'}
+                </button>
+                <button class="btn btn-secondary" onclick="openToolSettings('${tool.id}')">Settings</button>
+            `;
+        }
     });
 }
 
 // Render auto-start checkboxes
 function renderAutoStartTools() {
     const container = document.getElementById('autoStartTools');
+    if (!container) return;
+    
     container.innerHTML = '';
     
     TOOLS.forEach(tool => {
@@ -196,100 +292,141 @@ function renderAutoStartTools() {
 // Setup event listeners
 function setupEventListeners() {
     // Toggle API key visibility
-    document.getElementById('toggleApiKey').addEventListener('click', () => {
-        const input = document.getElementById('apiKey');
-        input.type = input.type === 'password' ? 'text' : 'password';
-    });
+    const toggleBtn = document.getElementById('toggleApiKey');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const input = document.getElementById('apiKey');
+            if (input) {
+                input.type = input.type === 'password' ? 'text' : 'password';
+            }
+        });
+    }
     
     // Save API key
-    document.getElementById('saveApiKeyBtn').addEventListener('click', async () => {
-        const apiKey = document.getElementById('apiKey').value;
-        const status = document.getElementById('apiKeyStatus');
-        
-        if (!apiKey) {
-            status.textContent = 'Please enter an API key';
-            status.className = 'status error';
-            return;
-        }
-        
-        try {
-            await invoke('save_api_key', { apiKey });
-            status.textContent = 'API key saved successfully!';
-            status.className = 'status success';
-            document.getElementById('apiKey').value = '';
-            document.getElementById('apiKey').placeholder = '••••••••••••••••';
-        } catch (e) {
-            status.textContent = `Error: ${e}`;
-            status.className = 'status error';
-        }
-    });
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    if (saveApiKeyBtn) {
+        saveApiKeyBtn.addEventListener('click', async () => {
+            const apiKey = document.getElementById('apiKey')?.value;
+            const status = document.getElementById('apiKeyStatus');
+            
+            if (!apiKey) {
+                if (status) {
+                    status.textContent = 'Please enter an API key';
+                    status.className = 'status error';
+                }
+                return;
+            }
+            
+            try {
+                await invoke('save_api_key', { apiKey });
+                if (status) {
+                    status.textContent = 'API key saved successfully!';
+                    status.className = 'status success';
+                }
+                const apiKeyInput = document.getElementById('apiKey');
+                if (apiKeyInput) {
+                    apiKeyInput.value = '';
+                    apiKeyInput.placeholder = '••••••••••••••••';
+                }
+            } catch (e) {
+                if (status) {
+                    status.textContent = `Error: ${e}`;
+                    status.className = 'status error';
+                }
+            }
+        });
+    }
     
     // Validate API key
-    document.getElementById('validateApiKeyBtn').addEventListener('click', async () => {
-        const status = document.getElementById('apiKeyStatus');
-        status.textContent = 'Validating...';
-        status.className = 'status';
-        
-        try {
-            const result = await invoke('validate_api_key');
-            if (result.valid) {
-                status.textContent = 'API key is valid!';
-                status.className = 'status success';
-            } else {
-                status.textContent = `Invalid: ${result.error}`;
-                status.className = 'status error';
+    const validateBtn = document.getElementById('validateApiKeyBtn');
+    if (validateBtn) {
+        validateBtn.addEventListener('click', async () => {
+            const status = document.getElementById('apiKeyStatus');
+            if (status) {
+                status.textContent = 'Validating...';
+                status.className = 'status';
             }
-        } catch (e) {
-            status.textContent = `Error: ${e}`;
-            status.className = 'status error';
-        }
-    });
+            
+            try {
+                const result = await invoke('validate_api_key');
+                if (status) {
+                    if (result.valid) {
+                        status.textContent = 'API key is valid!';
+                        status.className = 'status success';
+                    } else {
+                        status.textContent = `Invalid: ${result.error}`;
+                        status.className = 'status error';
+                    }
+                }
+            } catch (e) {
+                if (status) {
+                    status.textContent = `Error: ${e}`;
+                    status.className = 'status error';
+                }
+            }
+        });
+    }
     
     // Dark mode toggle
-    document.getElementById('darkMode').addEventListener('change', (e) => {
-        if (e.target.checked) {
-            document.body.classList.remove('light-mode');
-        } else {
-            document.body.classList.add('light-mode');
-        }
-    });
+    const darkModeCheckbox = document.getElementById('darkMode');
+    if (darkModeCheckbox) {
+        darkModeCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.remove('light-mode');
+            } else {
+                document.body.classList.add('light-mode');
+            }
+        });
+    }
     
     // Save settings
-    document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
-        const status = document.getElementById('settingsStatus');
-        
-        try {
-            // Gather settings
-            const newConfig = {
-                auto_start: document.getElementById('autoStart').checked,
-                start_minimized: document.getElementById('startMinimized').checked,
-                dark_mode: document.getElementById('darkMode').checked,
-                tools: {}
-            };
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', async () => {
+            const status = document.getElementById('settingsStatus');
             
-            // Gather auto-start settings for each tool
-            TOOLS.forEach(tool => {
-                const checkbox = document.getElementById(`autoStart-${tool.id}`);
-                newConfig.tools[tool.id] = {
-                    enabled: true,
-                    auto_start: checkbox ? checkbox.checked : false
+            try {
+                // Gather settings
+                const newConfig = {
+                    auto_start: document.getElementById('autoStart')?.checked || false,
+                    start_minimized: document.getElementById('startMinimized')?.checked || false,
+                    dark_mode: document.getElementById('darkMode')?.checked !== false,
+                    tools: {}
                 };
-            });
-            
-            await invoke('save_config', { config: newConfig });
-            config = newConfig;
-            
-            status.textContent = 'Settings saved!';
-            status.className = 'status success';
-        } catch (e) {
-            status.textContent = `Error: ${e}`;
-            status.className = 'status error';
-        }
-    });
+                
+                // Gather auto-start settings for each tool
+                TOOLS.forEach(tool => {
+                    const checkbox = document.getElementById(`autoStart-${tool.id}`);
+                    newConfig.tools[tool.id] = {
+                        enabled: true,
+                        auto_start: checkbox ? checkbox.checked : false
+                    };
+                });
+                
+                await invoke('save_config', { config: newConfig });
+                config = newConfig;
+                
+                if (status) {
+                    status.textContent = 'Settings saved!';
+                    status.className = 'status success';
+                }
+            } catch (e) {
+                if (status) {
+                    status.textContent = `Error: ${e}`;
+                    status.className = 'status error';
+                }
+            }
+        });
+    }
 }
 
 // Tool actions (global functions for onclick handlers)
 window.startTool = async function(toolId) {
+    if (!tauriReady) {
+        alert('Tauri not ready');
+        return;
+    }
+    
     try {
         await invoke('start_tool', { toolId });
         toolStatuses[toolId] = 'Starting';
@@ -301,6 +438,11 @@ window.startTool = async function(toolId) {
 };
 
 window.stopTool = async function(toolId) {
+    if (!tauriReady) {
+        alert('Tauri not ready');
+        return;
+    }
+    
     try {
         await invoke('stop_tool', { toolId });
         toolStatuses[toolId] = 'Stopped';
@@ -312,10 +454,15 @@ window.stopTool = async function(toolId) {
 };
 
 window.openToolSettings = async function(toolId) {
+    if (!tauriReady) {
+        alert('Tauri not ready');
+        return;
+    }
+    
     try {
         await invoke('open_tool_settings', { toolId });
     } catch (e) {
         console.error(`Failed to open settings for ${toolId}:`, e);
-        alert(`This tool doesn't have a separate settings window.`);
+        alert(`This tool doesn't have a separate settings window. Start the tool and use its tray icon for settings.`);
     }
 };
