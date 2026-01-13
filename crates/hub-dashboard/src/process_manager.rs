@@ -87,10 +87,10 @@ impl ProcessManager {
 
     /// Add hotkey command-line arguments based on tool type
     fn add_hotkey_args(&self, cmd: &mut Command, tool_id: &ToolId, tool_config: &ToolConfig) {
-        // Skip for GUI apps that have their own config (desk-talk, typo-fix, ocr-paste)
-        // These tools read from their own config files
+        // Skip for GUI apps that have their own config (desk-talk, typo-fix)
+        // These tools read from their own Tauri config files
         match tool_id {
-            ToolId::DeskTalk | ToolId::TypoFix | ToolId::OcrPaste => {
+            ToolId::DeskTalk | ToolId::TypoFix => {
                 // These have their own GUI config, don't pass CLI args
                 return;
             }
@@ -103,6 +103,7 @@ impl ProcessManager {
                 ToolId::SpeakSelected => "--ptt-key",
                 ToolId::QuickAssistant => "--ptt-key",
                 ToolId::FlattenString => "--trigger-key",
+                ToolId::OcrPaste => "--trigger-key",
                 _ => return,
             };
             cmd.arg(arg_name).arg(hotkey);
@@ -111,7 +112,7 @@ impl ProcessManager {
             let arg_name = match tool_id {
                 ToolId::SpeakSelected => "--special-ptt-key",
                 ToolId::QuickAssistant => "--special-ptt-key",
-                // flatten-string doesn't support special keys
+                // flatten-string and ocr-paste don't support special keys
                 _ => return,
             };
             cmd.arg(arg_name).arg(special_key.to_string());

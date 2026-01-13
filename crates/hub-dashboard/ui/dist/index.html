@@ -16,7 +16,6 @@
         <div class="tabs">
             <button class="tab-button active" data-tab="tools">Tools</button>
             <button class="tab-button" data-tab="settings">Settings</button>
-            <button class="tab-button" data-tab="hotkeys">Hotkeys</button>
         </div>
 
         <!-- Tools Tab -->
@@ -72,26 +71,6 @@
             </footer>
         </div>
 
-        <!-- Hotkeys Tab -->
-        <div class="tab-content" id="hotkeys">
-            <div class="section">
-                <h2>Configure Hotkeys</h2>
-                <p class="hint">Set the trigger key for each tool. CLI tools require a hotkey to function. Changes take effect when you restart the tool.</p>
-                <div id="hotkeyConfig" class="hotkey-config">
-                    <!-- Hotkey config will be populated by JavaScript -->
-                </div>
-            </div>
-            
-            <div class="section">
-                <h2>Available Keys</h2>
-                <p class="hint">Common keys you can use: F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, Insert, Delete, Home, End, PageUp, PageDown, ScrollLock, Pause</p>
-            </div>
-            
-            <footer>
-                <button id="saveHotkeysBtn" class="btn btn-primary">Save Hotkeys</button>
-                <div class="status" id="hotkeysStatus"></div>
-            </footer>
-        </div>
     </div>
 
     <script type="module">
