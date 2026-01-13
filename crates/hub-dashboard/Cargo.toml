@@ -1,0 +1,22 @@
+[package]
+name = "hub-dashboard"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "System tray dashboard for the Hub productivity suite"
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+hub-common.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+parking_lot.workspace = true
+once_cell.workspace = true
+
+tauri.workspace = true
+tauri-plugin-opener.workspace = true
+tauri-plugin-single-instance.workspace = true

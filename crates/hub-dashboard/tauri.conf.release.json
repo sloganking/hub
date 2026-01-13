@@ -1,0 +1,64 @@
+{
+  "productName": "Productivity Hub",
+  "version": "0.1.0",
+  "identifier": "com.productivity-hub.app",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "ui/dist"
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "resources/tools/*": "tools/"
+    },
+    "externalBin": [],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine",
+        "languages": ["English"],
+        "displayLanguageSelector": false,
+        "compression": "lzma"
+      }
+    },
+    "publisher": "Productivity Hub",
+    "copyright": "Copyright 2026",
+    "category": "Productivity",
+    "shortDescription": "Unified dashboard for your productivity tools",
+    "longDescription": "Productivity Hub bundles desk-talk, speak-selected, quick-assistant, flatten-string, typo-fix, and ocr-paste into a single manageable suite with shared configuration.",
+    "licenseFile": "../../LICENSE"
+  },
+  "app": {
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$RESOURCE/**"]
+      }
+    },
+    "windows": [
+      {
+        "title": "Productivity Hub",
+        "width": 900,
+        "height": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "visible": false,
+        "url": "index.html",
+        "label": "main",
+        "center": true
+      }
+    ]
+  }
+}

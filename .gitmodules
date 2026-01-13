@@ -1,0 +1,18 @@
+[submodule "tools/desk-talk"]
+	path = tools/desk-talk
+	url = ../desk-talk
+[submodule "tools/speak-selected"]
+	path = tools/speak-selected
+	url = ../speak-selected
+[submodule "tools/quick-assistant"]
+	path = tools/quick-assistant
+	url = ../quick-assistant
+[submodule "tools/flatten-string"]
+	path = tools/flatten-string
+	url = ../flatten-string
+[submodule "tools/typo-fix"]
+	path = tools/typo-fix
+	url = ../typo-fix
+[submodule "tools/ocr-paste"]
+	path = tools/ocr-paste
+	url = ../ocr-paste

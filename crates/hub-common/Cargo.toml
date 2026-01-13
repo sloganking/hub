@@ -1,0 +1,21 @@
+[package]
+name = "hub-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared configuration and utilities for the Hub productivity suite"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+keyring.workspace = true
+directories.workspace = true
+dotenvy.workspace = true
+rdev.workspace = true
+parking_lot.workspace = true
+once_cell.workspace = true
+chrono.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
