@@ -201,19 +201,35 @@ function initTauri() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     setupTabs();
+    
+    // Show "Checking..." state for all tools on startup
+    TOOLS.forEach(tool => {
+        toolStatuses[tool.id] = 'Checking...';
+    });
     renderTools();
     renderAutoStartTools();
     
     if (initTauri()) {
         try {
             await loadConfig();
+            // Re-render with config but still checking
+            renderTools();
+            renderAutoStartTools();
+            
             // Initial scan for external processes (one-time, can be slow)
+            // Use setTimeout to let UI render the "Checking..." state first
+            await new Promise(resolve => setTimeout(resolve, 50));
             await invoke('scan_external_processes');
             await loadToolStatuses();
             renderTools();
             renderAutoStartTools();
         } catch (e) {
             console.error('Failed to load initial data:', e);
+            // On error, show as stopped
+            TOOLS.forEach(tool => {
+                toolStatuses[tool.id] = 'Stopped';
+            });
+            renderTools();
         }
         
         setupEventListeners();
@@ -376,7 +392,8 @@ function updateToolCards() {
         
         const status = toolStatuses[tool.id] || 'Stopped';
         const isRunning = status === 'Running';
-        const isPending = status === 'Starting...' || status === 'Stopping...';
+        const isPending = status === 'Starting...' || status === 'Stopping...' || status === 'Checking...';
+        const isChecking = status === 'Checking...';
         const toolConfig = config.tools?.[tool.id] || {};
         const hasHotkeySet = toolConfig.hotkey || tool.type === 'gui';
         const needsApiKeyButMissing = tool.requiresApiKey && !hasApiKey;
@@ -407,7 +424,14 @@ function updateToolCards() {
         
         const actionsEl = card.querySelector('.tool-actions');
         if (actionsEl) {
-            if (isPending) {
+            if (isChecking) {
+                // Show checking button with spinner
+                actionsEl.innerHTML = `
+                    <button class="btn btn-checking" disabled>
+                        <span class="spinner"></span> Checking...
+                    </button>
+                `;
+            } else if (isPending) {
                 // Show pending button with spinner
                 const btnClass = status === 'Starting...' ? 'btn-pending-start' : 'btn-pending-stop';
                 actionsEl.innerHTML = `
