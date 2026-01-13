@@ -82,8 +82,8 @@ impl ProcessManager {
             }
         }
 
-        // Add hotkey arguments based on tool type
-        self.add_hotkey_args(&mut cmd, tool_id, tool_config);
+        // Add command-line arguments based on tool type (hotkey, voice, etc.)
+        self.add_tool_args(&mut cmd, tool_id, tool_config);
 
         // Hide console window for CLI tools on Windows
         #[cfg(windows)]
@@ -144,8 +144,8 @@ impl ProcessManager {
         Ok(())
     }
 
-    /// Add hotkey command-line arguments based on tool type
-    fn add_hotkey_args(&self, cmd: &mut Command, tool_id: &ToolId, tool_config: &ToolConfig) {
+    /// Add command-line arguments based on tool type
+    fn add_tool_args(&self, cmd: &mut Command, tool_id: &ToolId, tool_config: &ToolConfig) {
         // Skip for GUI apps that have their own config (desk-talk, typo-fix)
         // These tools read from their own Tauri config files
         match tool_id {
@@ -178,6 +178,17 @@ impl ProcessManager {
             println!("  Passing special hotkey: {} {}", arg_name, special_key);
         } else {
             println!("  Warning: No hotkey configured for {}", tool_id.display_name());
+        }
+
+        // Pass voice for TTS tools
+        if let Some(ref voice) = tool_config.voice {
+            let arg_name = match tool_id {
+                ToolId::SpeakSelected => "--voice",
+                ToolId::QuickAssistant => "--ai-voice",
+                _ => return,
+            };
+            cmd.arg(arg_name).arg(voice);
+            println!("  Passing voice: {} {}", arg_name, voice);
         }
     }
 

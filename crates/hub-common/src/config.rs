@@ -63,6 +63,10 @@ pub struct ToolConfig {
     #[serde(default)]
     pub special_hotkey: Option<u32>,
 
+    /// AI voice for TTS tools (speak-selected, quick-assistant)
+    #[serde(default)]
+    pub voice: Option<String>,
+
     /// Tool-specific settings (stored as JSON value for flexibility)
     #[serde(default)]
     pub settings: serde_json::Value,
@@ -79,6 +83,7 @@ impl Default for ToolConfig {
             auto_start: false,
             hotkey: None,
             special_hotkey: None,
+            voice: None,
             settings: serde_json::Value::Null,
         }
     }

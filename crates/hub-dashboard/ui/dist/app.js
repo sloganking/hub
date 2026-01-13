@@ -17,7 +17,8 @@ const TOOLS = [
         description: 'Read selected text aloud using AI TTS.',
         requiresApiKey: true,
         type: 'cli',
-        hotkeyArg: '--ptt-key'
+        hotkeyArg: '--ptt-key',
+        hasVoice: true,
     },
     {
         id: 'quick-assistant',
@@ -25,7 +26,8 @@ const TOOLS = [
         description: 'Voice-activated AI assistant.',
         requiresApiKey: true,
         type: 'cli',
-        hotkeyArg: '--ptt-key'
+        hotkeyArg: '--ptt-key',
+        hasVoice: true,
     },
     {
         id: 'flatten-string',
@@ -50,6 +52,20 @@ const TOOLS = [
         type: 'cli',
         hotkeyArg: '--trigger-key'
     }
+];
+
+// Available AI voices for TTS tools
+const VOICE_OPTIONS = [
+    { value: '', label: '-- Default (Echo) --' },
+    { value: 'alloy', label: 'Alloy' },
+    { value: 'ash', label: 'Ash' },
+    { value: 'coral', label: 'Coral' },
+    { value: 'echo', label: 'Echo' },
+    { value: 'fable', label: 'Fable' },
+    { value: 'nova', label: 'Nova' },
+    { value: 'onyx', label: 'Onyx' },
+    { value: 'sage', label: 'Sage' },
+    { value: 'shimmer', label: 'Shimmer' },
 ];
 
 // All available hotkeys - lowercase kebab-case for clap ValueEnum
@@ -344,6 +360,23 @@ function renderTools() {
             hotkeyHtml = `<div class="tool-hotkey"><span class="gui-note">Uses own settings</span></div>`;
         }
         
+        // Build voice selector for TTS tools
+        let voiceHtml = '';
+        if (tool.hasVoice) {
+            const currentVoice = toolConfig.voice || '';
+            const voiceOptions = VOICE_OPTIONS.map(opt => 
+                `<option value="${opt.value}" ${currentVoice === opt.value ? 'selected' : ''}>${opt.label}</option>`
+            ).join('');
+            voiceHtml = `
+                <div class="tool-voice">
+                    <label class="voice-label">AI Voice:</label>
+                    <select class="voice-select" id="voice-${tool.id}" ${isRunning || isPending ? 'disabled' : ''}>
+                        ${voiceOptions}
+                    </select>
+                </div>
+            `;
+        }
+        
         // Determine what's blocking the start
         let blockReason = '';
         if (!isRunning && !isPending) {
@@ -359,6 +392,10 @@ function renderTools() {
         
         // Build button HTML based on state
         let buttonHtml = '';
+        const isGuiTool = tool.type === 'gui';
+        // Only show Settings button when GUI tool is running
+        const settingsBtn = (isGuiTool && isRunning) ? `<button class="btn btn-secondary" onclick="openToolSettings('${tool.id}')" title="Open ${tool.name} settings">⚙️ Settings</button>` : '';
+        
         if (isChecking) {
             buttonHtml = `<button class="btn btn-checking" disabled><span class="spinner"></span> Checking...</button>`;
         } else if (isPending) {
@@ -371,6 +408,7 @@ function renderTools() {
                         ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
                     ${isRunning ? 'Stop' : 'Start'}
                 </button>
+                ${settingsBtn}
             `;
         }
         
@@ -385,6 +423,7 @@ function renderTools() {
             <p class="tool-description">${tool.description}</p>
             ${tool.requiresApiKey ? `<p class="hint ${needsApiKeyButMissing ? 'warning' : ''}">Requires API key${needsApiKeyButMissing ? ' ⚠️' : ' ✓'}</p>` : ''}
             ${hotkeyHtml}
+            ${voiceHtml}
             <div class="tool-actions">
                 ${buttonHtml}
             </div>
@@ -399,6 +438,14 @@ function renderTools() {
         const select = document.getElementById(`hotkey-${tool.id}`);
         if (select) {
             select.addEventListener('change', () => saveHotkeyForTool(tool.id, select.value));
+        }
+    });
+    
+    // Add change listeners to voice selects
+    TOOLS.filter(t => t.hasVoice).forEach(tool => {
+        const select = document.getElementById(`voice-${tool.id}`);
+        if (select) {
+            select.addEventListener('change', () => saveVoiceForTool(tool.id, select.value));
         }
     });
 }
@@ -442,6 +489,10 @@ function updateToolCards() {
         
         const actionsEl = card.querySelector('.tool-actions');
         if (actionsEl) {
+            const isGuiTool = tool.type === 'gui';
+            // Only show Settings button when GUI tool is running
+            const settingsBtn = (isGuiTool && isRunning) ? `<button class="btn btn-secondary" onclick="openToolSettings('${tool.id}')" title="Open ${tool.name} settings">⚙️ Settings</button>` : '';
+            
             if (isChecking) {
                 // Show checking button with spinner
                 actionsEl.innerHTML = `
@@ -464,9 +515,14 @@ function updateToolCards() {
                             ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
                         ${isRunning ? 'Stop' : 'Start'}
                     </button>
+                    ${settingsBtn}
                 `;
             }
         }
+        
+        // Disable voice select when running or pending
+        const voiceSelect = card.querySelector('.voice-select');
+        if (voiceSelect) voiceSelect.disabled = isRunning || isPending;
         
         // Update block reason
         let blockReasonEl = card.querySelector('.block-reason');
@@ -501,7 +557,8 @@ async function saveHotkeyForTool(toolId, hotkey) {
                 enabled: true,
                 auto_start: existingConfig.auto_start || false,
                 hotkey: tool.id === toolId ? (hotkey || null) : (existingConfig.hotkey || null),
-                special_hotkey: existingConfig.special_hotkey || null
+                special_hotkey: existingConfig.special_hotkey || null,
+                voice: existingConfig.voice || null
             };
         });
         
@@ -514,6 +571,39 @@ async function saveHotkeyForTool(toolId, hotkey) {
     } catch (e) {
         console.error('Failed to save hotkey:', e);
         alert(`Failed to save hotkey: ${e}`);
+    }
+}
+
+async function saveVoiceForTool(toolId, voice) {
+    if (!tauriReady) return;
+    
+    try {
+        // Build updated config
+        const newConfig = {
+            auto_start: config.auto_start || false,
+            start_minimized: config.start_minimized || false,
+            dark_mode: config.dark_mode !== false,
+            tools: {}
+        };
+        
+        TOOLS.forEach(tool => {
+            const existingConfig = config.tools?.[tool.id] || {};
+            newConfig.tools[tool.id] = {
+                enabled: true,
+                auto_start: existingConfig.auto_start || false,
+                hotkey: existingConfig.hotkey || null,
+                special_hotkey: existingConfig.special_hotkey || null,
+                voice: tool.id === toolId ? (voice || null) : (existingConfig.voice || null)
+            };
+        });
+        
+        await invoke('save_config', { config: newConfig });
+        config = newConfig;
+        
+        console.log(`Saved voice ${voice} for ${toolId}`);
+    } catch (e) {
+        console.error('Failed to save voice:', e);
+        alert(`Failed to save voice: ${e}`);
     }
 }
 
@@ -626,7 +716,8 @@ function setupEventListeners() {
                     enabled: true,
                     auto_start: document.getElementById(`autoStart-${tool.id}`)?.checked || false,
                     hotkey: existingConfig.hotkey || null,
-                    special_hotkey: existingConfig.special_hotkey || null
+                    special_hotkey: existingConfig.special_hotkey || null,
+                    voice: existingConfig.voice || null
                 };
             });
             
@@ -681,4 +772,14 @@ window.stopTool = async function(toolId) {
             alert(`Failed to stop tool: ${e}`);
         }
     }, 10);
+};
+
+window.openToolSettings = async function(toolId) {
+    if (!tauriReady) return;
+    
+    try {
+        await invoke('open_tool_settings', { toolId });
+    } catch (e) {
+        alert(`Failed to open settings: ${e}`);
+    }
 };
