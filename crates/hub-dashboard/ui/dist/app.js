@@ -183,6 +183,7 @@ const HOTKEY_OPTIONS = [
 let toolStatuses = {};
 let config = {};
 let tauriReady = false;
+let hasApiKey = false;
 
 function initTauri() {
     if (window.__TAURI_INTERNALS__) {
@@ -247,7 +248,7 @@ async function loadConfig() {
             document.body.classList.add('light-mode');
         }
         
-        const hasApiKey = await invoke('has_api_key');
+        hasApiKey = await invoke('has_api_key');
         if (hasApiKey) {
             document.getElementById('apiKey').placeholder = '••••••••••••••••';
         }
@@ -277,7 +278,9 @@ function renderTools() {
         const toolConfig = config.tools?.[tool.id] || {};
         const currentHotkey = toolConfig.hotkey || '';
         const needsHotkey = tool.type === 'cli';
-        const hasHotkey = currentHotkey || tool.type === 'gui';
+        const hasHotkeySet = currentHotkey || tool.type === 'gui';
+        const needsApiKeyButMissing = tool.requiresApiKey && !hasApiKey;
+        const canStart = hasHotkeySet && !needsApiKeyButMissing;
         
         const card = document.createElement('div');
         card.className = `tool-card ${isRunning ? 'running' : ''}`;
@@ -300,6 +303,16 @@ function renderTools() {
             hotkeyHtml = `<div class="tool-hotkey"><span class="gui-note">Uses own settings</span></div>`;
         }
         
+        // Determine what's blocking the start
+        let blockReason = '';
+        if (!isRunning) {
+            if (needsApiKeyButMissing) {
+                blockReason = 'Set API key in Settings first';
+            } else if (!hasHotkeySet) {
+                blockReason = 'Select a hotkey first';
+            }
+        }
+        
         card.innerHTML = `
             <div class="tool-header">
                 <span class="tool-name">${tool.name}</span>
@@ -309,15 +322,16 @@ function renderTools() {
                 </span>
             </div>
             <p class="tool-description">${tool.description}</p>
-            ${tool.requiresApiKey ? '<p class="hint">Requires API key</p>' : ''}
+            ${tool.requiresApiKey ? `<p class="hint ${needsApiKeyButMissing ? 'warning' : ''}">Requires API key${needsApiKeyButMissing ? ' ⚠️' : ' ✓'}</p>` : ''}
             ${hotkeyHtml}
             <div class="tool-actions">
                 <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
                         onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
-                        ${!hasHotkey ? 'disabled title="Select a hotkey first"' : ''}>
+                        ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
                     ${isRunning ? 'Stop' : 'Start'}
                 </button>
             </div>
+            ${blockReason ? `<p class="block-reason">${blockReason}</p>` : ''}
         `;
         
         grid.appendChild(card);
@@ -340,7 +354,9 @@ function updateToolCards() {
         const status = toolStatuses[tool.id] || 'Stopped';
         const isRunning = status === 'Running';
         const toolConfig = config.tools?.[tool.id] || {};
-        const hasHotkey = toolConfig.hotkey || tool.type === 'gui';
+        const hasHotkeySet = toolConfig.hotkey || tool.type === 'gui';
+        const needsApiKeyButMissing = tool.requiresApiKey && !hasApiKey;
+        const canStart = hasHotkeySet && !needsApiKeyButMissing;
         
         card.className = `tool-card ${isRunning ? 'running' : ''}`;
         
@@ -354,15 +370,38 @@ function updateToolCards() {
         const select = card.querySelector('.hotkey-select');
         if (select) select.disabled = isRunning;
         
+        // Determine what's blocking the start
+        let blockReason = '';
+        if (!isRunning) {
+            if (needsApiKeyButMissing) {
+                blockReason = 'Set API key in Settings first';
+            } else if (!hasHotkeySet) {
+                blockReason = 'Select a hotkey first';
+            }
+        }
+        
         const actionsEl = card.querySelector('.tool-actions');
         if (actionsEl) {
             actionsEl.innerHTML = `
                 <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
                         onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
-                        ${!hasHotkey ? 'disabled title="Select a hotkey first"' : ''}>
+                        ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
                     ${isRunning ? 'Stop' : 'Start'}
                 </button>
             `;
+        }
+        
+        // Update block reason
+        let blockReasonEl = card.querySelector('.block-reason');
+        if (blockReason) {
+            if (!blockReasonEl) {
+                blockReasonEl = document.createElement('p');
+                blockReasonEl.className = 'block-reason';
+                card.appendChild(blockReasonEl);
+            }
+            blockReasonEl.textContent = blockReason;
+        } else if (blockReasonEl) {
+            blockReasonEl.remove();
         }
     });
 }
@@ -438,6 +477,9 @@ function setupEventListeners() {
             status.className = 'status success';
             document.getElementById('apiKey').value = '';
             document.getElementById('apiKey').placeholder = '••••••••••••••••';
+            // Update state and re-render tools to enable start buttons
+            hasApiKey = true;
+            renderTools();
         } catch (e) {
             status.textContent = `Error: ${e}`;
             status.className = 'status error';

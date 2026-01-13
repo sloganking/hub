@@ -9,3 +9,18 @@ Current exe: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\h
   Checking: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\quick-assistant.exe" - exists: true
 Starting Quick Assistant from "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\quick-assistant.exe"
   Passing hotkey: --ptt-key shift-right
+Looking for binary: desk-talk.exe
+Current exe: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\hub-dashboard.exe"
+  Checking: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\desk-talk.exe" - exists: true
+Starting DeskTalk from "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\desk-talk.exe"
+Looking for binary: desk-talk.exe
+Current exe: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\hub-dashboard.exe"
+  Checking: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\desk-talk.exe" - exists: true
+Starting DeskTalk from "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\desk-talk.exe"
+Looking for binary: strflatten.exe
+Current exe: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\hub-dashboard.exe"
+  Checking: "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\strflatten.exe" - exists: true
+Starting Flatten String from "C:\\Users\\Brioche Elm\\Documents\\GitHub\\hub\\target\\release\\strflatten.exe"
+  Passing hotkey: --trigger-key control-right
+Stopping Flatten String...
+Flatten String force killed

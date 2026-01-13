@@ -398,6 +398,21 @@ input[type="password"]::placeholder {
     line-height: 1.5;
 }
 
+.hint.warning {
+    color: var(--warning);
+    font-weight: 500;
+}
+
+.block-reason {
+    font-size: 11px;
+    color: var(--warning);
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(210, 153, 34, 0.1);
+    border-radius: 4px;
+    text-align: center;
+}
+
 /* Status messages */
 .status {
     font-size: 13px;
