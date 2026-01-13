@@ -12,20 +12,23 @@ use std::os::windows::process::CommandExt;
 /// Manages child processes for all tools
 #[derive(Debug)]
 pub struct ProcessManager {
-    processes: HashMap<ToolId, ManagedProcess>,
-}
-
-#[derive(Debug)]
-struct ManagedProcess {
-    child: Child,
-    status: ToolStatus,
+    /// Processes we spawned ourselves
+    spawned_processes: HashMap<ToolId, Child>,
+    /// External processes we detected (by PID)
+    external_pids: HashMap<ToolId, u32>,
 }
 
 impl ProcessManager {
     pub fn new() -> Self {
         Self {
-            processes: HashMap::new(),
+            spawned_processes: HashMap::new(),
+            external_pids: HashMap::new(),
         }
+    }
+    
+    /// Initialize by detecting already-running tools (call after construction)
+    pub fn init_detect_running(&mut self) {
+        self.detect_running_tools();
     }
 
     /// Start a tool process with optional configuration
@@ -35,20 +38,30 @@ impl ProcessManager {
 
     /// Start a tool process with specific configuration
     pub fn start_tool_with_config(&mut self, tool_id: &ToolId, tool_config: &ToolConfig) -> Result<()> {
-        // Check if already running
-        if let Some(proc) = self.processes.get_mut(tool_id) {
-            // Check if process is still alive
-            match proc.child.try_wait() {
+        // Check if already running (spawned by us)
+        if let Some(child) = self.spawned_processes.get_mut(tool_id) {
+            match child.try_wait() {
                 Ok(Some(_)) => {
                     // Process exited, we can restart
+                    self.spawned_processes.remove(tool_id);
                 }
                 Ok(None) => {
                     // Still running
                     return Ok(());
                 }
                 Err(_) => {
-                    // Error checking, try to restart
+                    // Error checking, remove and try to restart
+                    self.spawned_processes.remove(tool_id);
                 }
+            }
+        }
+        
+        // Check if running externally
+        if let Some(pid) = self.external_pids.get(tool_id) {
+            if is_process_running(*pid) {
+                return Ok(()); // Already running externally
+            } else {
+                self.external_pids.remove(tool_id);
             }
         }
 
@@ -126,13 +139,7 @@ impl ProcessManager {
             }
         }
 
-        self.processes.insert(
-            tool_id.clone(),
-            ManagedProcess {
-                child,
-                status: ToolStatus::Running,
-            },
-        );
+        self.spawned_processes.insert(tool_id.clone(), child);
 
         Ok(())
     }
@@ -174,78 +181,160 @@ impl ProcessManager {
         }
     }
 
-    /// Stop a tool process
+    /// Stop a tool process (whether spawned by us or running externally)
     pub fn stop_tool(&mut self, tool_id: &ToolId) -> Result<()> {
-        if let Some(mut proc) = self.processes.remove(tool_id) {
-            println!("Stopping {}...", tool_id.display_name());
+        println!("Stopping {}...", tool_id.display_name());
 
+        // First try to stop a process we spawned
+        if let Some(mut child) = self.spawned_processes.remove(tool_id) {
+            let pid = child.id();
+            
             // Try graceful termination first
             #[cfg(windows)]
             {
-                // On Windows, we can use taskkill for graceful termination
-                let pid = proc.child.id();
                 let _ = Command::new("taskkill")
                     .args(["/PID", &pid.to_string()])
+                    .creation_flags(0x08000000) // CREATE_NO_WINDOW
                     .output();
             }
 
-            // Give it a moment to exit gracefully
             std::thread::sleep(std::time::Duration::from_millis(500));
 
-            // Check if it exited
-            match proc.child.try_wait() {
+            match child.try_wait() {
                 Ok(Some(_)) => {
                     println!("{} stopped gracefully", tool_id.display_name());
                 }
                 _ => {
-                    // Force kill
-                    let _ = proc.child.kill();
-                    let _ = proc.child.wait();
+                    let _ = child.kill();
+                    let _ = child.wait();
                     println!("{} force killed", tool_id.display_name());
                 }
             }
+            return Ok(());
         }
 
+        // Try to stop an externally-started process
+        if let Some(pid) = self.external_pids.remove(tool_id) {
+            #[cfg(windows)]
+            {
+                let _ = Command::new("taskkill")
+                    .args(["/PID", &pid.to_string(), "/F"])
+                    .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                    .output();
+            }
+            println!("{} (external, PID {}) stopped", tool_id.display_name(), pid);
+            return Ok(());
+        }
+
+        // Not running
         Ok(())
     }
 
     /// Get the status of a tool
     pub fn get_status(&self, tool_id: &ToolId) -> ToolStatus {
-        if let Some(proc) = self.processes.get(tool_id) {
-            // We can't call try_wait on a shared reference, so just return the stored status
-            proc.status.clone()
-        } else {
-            ToolStatus::Stopped
+        // Check spawned processes
+        if self.spawned_processes.contains_key(tool_id) {
+            return ToolStatus::Running;
         }
+        
+        // Check external processes
+        if self.external_pids.contains_key(tool_id) {
+            return ToolStatus::Running;
+        }
+        
+        ToolStatus::Stopped
     }
 
     /// Update statuses by checking if processes are still running
+    /// This is called frequently, so it must be FAST - no system calls for external processes
     pub fn refresh_statuses(&mut self) {
-        let mut exited = Vec::new();
-
-        for (tool_id, proc) in self.processes.iter_mut() {
-            match proc.child.try_wait() {
-                Ok(Some(status)) => {
-                    if status.success() {
-                        proc.status = ToolStatus::Stopped;
-                    } else {
-                        proc.status = ToolStatus::Error(format!("Exited with code {:?}", status.code()));
-                    }
-                    exited.push(tool_id.clone());
+        // Check spawned processes - this is fast (just try_wait)
+        let mut exited_spawned = Vec::new();
+        for (tool_id, child) in self.spawned_processes.iter_mut() {
+            match child.try_wait() {
+                Ok(Some(_)) => {
+                    exited_spawned.push(tool_id.clone());
                 }
                 Ok(None) => {
-                    proc.status = ToolStatus::Running;
+                    // Still running
                 }
-                Err(e) => {
-                    proc.status = ToolStatus::Error(e.to_string());
-                    exited.push(tool_id.clone());
+                Err(_) => {
+                    exited_spawned.push(tool_id.clone());
                 }
             }
         }
+        for tool_id in exited_spawned {
+            self.spawned_processes.remove(&tool_id);
+        }
+        
+        // For external processes, we just trust they're still running
+        // They'll be removed when we try to stop them or on next full scan
+        // This avoids expensive tasklist calls every 2 seconds
+    }
+    
+    /// Full scan for external processes (expensive - only call occasionally)
+    pub fn full_scan(&mut self) {
+        let running = get_all_running_processes();
+        
+        // Check external processes
+        let mut exited_external = Vec::new();
+        for (tool_id, pid) in self.external_pids.iter() {
+            let exe_name = if cfg!(windows) {
+                format!("{}.exe", tool_id.binary_name())
+            } else {
+                tool_id.binary_name().to_string()
+            };
+            
+            let still_running = running.get(&exe_name.to_lowercase())
+                .map(|&p| p == *pid)
+                .unwrap_or(false);
+            
+            if !still_running {
+                exited_external.push(tool_id.clone());
+            }
+        }
+        for tool_id in exited_external {
+            self.external_pids.remove(&tool_id);
+        }
 
-        // Remove exited processes
-        for tool_id in exited {
-            self.processes.remove(&tool_id);
+        // Detect newly-started external processes
+        for tool_id in ToolId::all() {
+            if self.spawned_processes.contains_key(tool_id) || self.external_pids.contains_key(tool_id) {
+                continue;
+            }
+            let exe_name = if cfg!(windows) {
+                format!("{}.exe", tool_id.binary_name())
+            } else {
+                tool_id.binary_name().to_string()
+            };
+            if let Some(&pid) = running.get(&exe_name.to_lowercase()) {
+                self.external_pids.insert(tool_id.clone(), pid);
+            }
+        }
+    }
+    
+    /// Detect tools that are already running (started outside the hub)
+    fn detect_running_tools(&mut self) {
+        // Get all running processes in one call (efficient)
+        let running = get_all_running_processes();
+        
+        for tool_id in ToolId::all() {
+            // Skip if we already know about this tool
+            if self.spawned_processes.contains_key(tool_id) || self.external_pids.contains_key(tool_id) {
+                continue;
+            }
+            
+            // Check if this tool is running
+            let exe_name = if cfg!(windows) {
+                format!("{}.exe", tool_id.binary_name())
+            } else {
+                tool_id.binary_name().to_string()
+            };
+            
+            if let Some(&pid) = running.get(&exe_name.to_lowercase()) {
+                println!("Detected already-running {}: PID {}", tool_id.display_name(), pid);
+                self.external_pids.insert(tool_id.clone(), pid);
+            }
         }
     }
 
@@ -307,12 +396,13 @@ impl ProcessManager {
         None
     }
 
-    /// Stop all running tools
+    /// Stop all running tools (only those we spawned, not external ones)
     pub fn stop_all(&mut self) {
-        let tool_ids: Vec<_> = self.processes.keys().cloned().collect();
+        let tool_ids: Vec<_> = self.spawned_processes.keys().cloned().collect();
         for tool_id in tool_ids {
             let _ = self.stop_tool(&tool_id);
         }
+        // Note: We don't stop external processes on hub close
     }
 }
 
@@ -337,4 +427,90 @@ fn tool_id_to_folder(tool_id: &ToolId) -> &'static str {
         ToolId::TypoFix => "typo-fix",
         ToolId::OcrPaste => "ocr-paste",
     }
+}
+
+/// Get all running processes as a map of name -> PID (efficient single call)
+#[cfg(windows)]
+fn get_all_running_processes() -> HashMap<String, u32> {
+    let mut result = HashMap::new();
+    
+    // Use tasklist to get all processes in one call
+    let output = match Command::new("tasklist")
+        .args(["/FO", "CSV", "/NH"])
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return result,
+    };
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    // Parse CSV output: "image_name","pid","session_name","session_num","mem_usage"
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() >= 2 {
+            let name = parts[0].trim_matches('"').to_lowercase();
+            let pid_str = parts[1].trim_matches('"');
+            if let Ok(pid) = pid_str.parse::<u32>() {
+                result.insert(name, pid);
+            }
+        }
+    }
+    
+    result
+}
+
+#[cfg(not(windows))]
+fn get_all_running_processes() -> HashMap<String, u32> {
+    let mut result = HashMap::new();
+    
+    // Use ps on Unix-like systems
+    let output = match Command::new("ps")
+        .args(["-eo", "comm,pid"])
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return result,
+    };
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines().skip(1) {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 2 {
+            let name = parts[0].to_lowercase();
+            if let Ok(pid) = parts[1].parse::<u32>() {
+                result.insert(name, pid);
+            }
+        }
+    }
+    
+    result
+}
+
+
+/// Check if a process with the given PID is still running
+#[cfg(windows)]
+fn is_process_running(pid: u32) -> bool {
+    let output = Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+        .output();
+    
+    match output {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            !stdout.trim().is_empty() && !stdout.contains("No tasks")
+        }
+        Err(_) => false,
+    }
+}
+
+#[cfg(not(windows))]
+fn is_process_running(pid: u32) -> bool {
+    Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }

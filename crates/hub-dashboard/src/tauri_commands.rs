@@ -189,7 +189,7 @@ pub async fn validate_api_key() -> ApiKeyValidation {
 
 #[tauri::command]
 pub fn get_tool_statuses(state: State<AppState>) -> HashMap<String, String> {
-    // First refresh to check which processes are still alive
+    // Quick refresh - only checks spawned processes (fast)
     {
         let mut pm = state.process_manager.write();
         pm.refresh_statuses();
@@ -218,6 +218,13 @@ pub fn get_tool_statuses(state: State<AppState>) -> HashMap<String, String> {
     }
 
     statuses
+}
+
+#[tauri::command]
+pub fn scan_external_processes(state: State<AppState>) {
+    // Full scan for external processes - expensive, call sparingly
+    let mut pm = state.process_manager.write();
+    pm.full_scan();
 }
 
 #[tauri::command]

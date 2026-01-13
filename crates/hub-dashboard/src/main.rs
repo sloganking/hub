@@ -21,9 +21,13 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(config: HubConfig) -> Self {
+        let mut pm = ProcessManager::new();
+        // Detect already-running tools (done here so it's ready when UI loads)
+        pm.init_detect_running();
+        
         Self {
             config: RwLock::new(config),
-            process_manager: RwLock::new(ProcessManager::new()),
+            process_manager: RwLock::new(pm),
         }
     }
 }
@@ -123,6 +127,7 @@ fn main() {
             tauri_commands::delete_api_key,
             tauri_commands::validate_api_key,
             tauri_commands::get_tool_statuses,
+            tauri_commands::scan_external_processes,
             tauri_commands::start_tool,
             tauri_commands::stop_tool,
             tauri_commands::open_tool_settings,

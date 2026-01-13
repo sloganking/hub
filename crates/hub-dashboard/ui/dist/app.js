@@ -46,7 +46,7 @@ const TOOLS = [
         id: 'ocr-paste',
         name: 'OCR Paste',
         description: 'OCR from clipboard images.',
-        requiresApiKey: true,
+        requiresApiKey: false, // API key is optional (only for video extraction)
         type: 'cli',
         hotkeyArg: '--trigger-key'
     }
@@ -207,6 +207,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (initTauri()) {
         try {
             await loadConfig();
+            // Initial scan for external processes (one-time, can be slow)
+            await invoke('scan_external_processes');
             await loadToolStatuses();
             renderTools();
             renderAutoStartTools();
@@ -215,6 +217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         setupEventListeners();
+        // Fast polling - only checks processes we spawned
         setInterval(loadToolStatuses, 2000);
     }
 });
