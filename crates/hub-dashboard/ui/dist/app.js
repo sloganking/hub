@@ -314,6 +314,8 @@ function renderTools() {
     TOOLS.forEach(tool => {
         const status = toolStatuses[tool.id] || 'Stopped';
         const isRunning = status === 'Running';
+        const isPending = status === 'Starting...' || status === 'Stopping...' || status === 'Checking...';
+        const isChecking = status === 'Checking...';
         const toolConfig = config.tools?.[tool.id] || {};
         const currentHotkey = toolConfig.hotkey || '';
         const needsHotkey = tool.type === 'cli';
@@ -322,7 +324,7 @@ function renderTools() {
         const canStart = hasHotkeySet && !needsApiKeyButMissing;
         
         const card = document.createElement('div');
-        card.className = `tool-card ${isRunning ? 'running' : ''}`;
+        card.className = `tool-card ${isRunning ? 'running' : ''} ${isPending ? 'pending' : ''} ${isChecking ? 'checking' : ''}`;
         card.id = `tool-${tool.id}`;
         
         // Build hotkey selector for CLI tools
@@ -333,7 +335,7 @@ function renderTools() {
             ).join('');
             hotkeyHtml = `
                 <div class="tool-hotkey">
-                    <select class="hotkey-select" id="hotkey-${tool.id}" ${isRunning ? 'disabled' : ''}>
+                    <select class="hotkey-select" id="hotkey-${tool.id}" ${isRunning || isPending ? 'disabled' : ''}>
                         ${options}
                     </select>
                 </div>
@@ -344,7 +346,7 @@ function renderTools() {
         
         // Determine what's blocking the start
         let blockReason = '';
-        if (!isRunning) {
+        if (!isRunning && !isPending) {
             if (needsApiKeyButMissing) {
                 blockReason = 'Set API key in Settings first';
             } else if (!hasHotkeySet) {
@@ -352,11 +354,31 @@ function renderTools() {
             }
         }
         
+        // Determine status class
+        const statusClass = isChecking ? 'checking' : (isPending ? 'pending' : (isRunning ? 'running' : 'stopped'));
+        
+        // Build button HTML based on state
+        let buttonHtml = '';
+        if (isChecking) {
+            buttonHtml = `<button class="btn btn-checking" disabled><span class="spinner"></span> Checking...</button>`;
+        } else if (isPending) {
+            const btnClass = status === 'Starting...' ? 'btn-pending-start' : 'btn-pending-stop';
+            buttonHtml = `<button class="btn ${btnClass}" disabled><span class="spinner"></span> ${status}</button>`;
+        } else {
+            buttonHtml = `
+                <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
+                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
+                        ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
+                    ${isRunning ? 'Stop' : 'Start'}
+                </button>
+            `;
+        }
+        
         card.innerHTML = `
             <div class="tool-header">
                 <span class="tool-name">${tool.name}</span>
-                <span class="tool-status ${isRunning ? 'running' : 'stopped'}">
-                    <span class="status-dot"></span>
+                <span class="tool-status ${statusClass}">
+                    <span class="status-dot ${(isPending || isChecking) ? 'spinning' : ''}"></span>
                     ${status}
                 </span>
             </div>
@@ -364,11 +386,7 @@ function renderTools() {
             ${tool.requiresApiKey ? `<p class="hint ${needsApiKeyButMissing ? 'warning' : ''}">Requires API key${needsApiKeyButMissing ? ' ⚠️' : ' ✓'}</p>` : ''}
             ${hotkeyHtml}
             <div class="tool-actions">
-                <button class="btn ${isRunning ? 'btn-danger' : 'btn-success'}" 
-                        onclick="${isRunning ? `stopTool('${tool.id}')` : `startTool('${tool.id}')`}"
-                        ${!isRunning && !canStart ? `disabled title="${blockReason}"` : ''}>
-                    ${isRunning ? 'Stop' : 'Start'}
-                </button>
+                ${buttonHtml}
             </div>
             ${blockReason ? `<p class="block-reason">${blockReason}</p>` : ''}
         `;
@@ -399,13 +417,13 @@ function updateToolCards() {
         const needsApiKeyButMissing = tool.requiresApiKey && !hasApiKey;
         const canStart = hasHotkeySet && !needsApiKeyButMissing;
         
-        card.className = `tool-card ${isRunning ? 'running' : ''} ${isPending ? 'pending' : ''}`;
+        card.className = `tool-card ${isRunning ? 'running' : ''} ${isPending ? 'pending' : ''} ${isChecking ? 'checking' : ''}`;
         
         const statusEl = card.querySelector('.tool-status');
         if (statusEl) {
-            const statusClass = isPending ? 'pending' : (isRunning ? 'running' : 'stopped');
+            const statusClass = isChecking ? 'checking' : (isPending ? 'pending' : (isRunning ? 'running' : 'stopped'));
             statusEl.className = `tool-status ${statusClass}`;
-            statusEl.innerHTML = `<span class="status-dot ${isPending ? 'spinning' : ''}"></span>${status}`;
+            statusEl.innerHTML = `<span class="status-dot ${(isPending || isChecking) ? 'spinning' : ''}"></span>${status}`;
         }
         
         // Disable hotkey select when running or pending

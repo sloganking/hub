@@ -210,6 +210,15 @@ header h1 {
     color: var(--warning);
 }
 
+.tool-status.checking {
+    color: var(--text-muted);
+}
+
+.tool-card.checking {
+    border-color: var(--border-color);
+    opacity: 0.8;
+}
+
 .status-dot.spinning {
     animation: spin 1s linear infinite;
     border: 2px solid var(--warning);
