@@ -25,6 +25,8 @@ pub struct FrontendToolConfig {
     pub special_hotkey: Option<u32>,
     #[serde(default)]
     pub voice: Option<String>,
+    #[serde(default)]
+    pub speech_speed: Option<f32>,
 }
 
 impl From<HubConfig> for FrontendConfig {
@@ -49,6 +51,7 @@ impl From<HubConfig> for FrontendConfig {
                         hotkey: tc.hotkey,
                         special_hotkey: tc.special_hotkey,
                         voice: tc.voice,
+                        speech_speed: tc.speech_speed,
                     },
                 )
             })
@@ -99,6 +102,7 @@ pub fn save_config(state: State<AppState>, config: FrontendConfig) -> Result<(),
                     hotkey: tc.hotkey,
                     special_hotkey: tc.special_hotkey,
                     voice: tc.voice,
+                    speech_speed: tc.speech_speed,
                     settings: serde_json::Value::Null,
                 },
             );

@@ -67,6 +67,10 @@ pub struct ToolConfig {
     #[serde(default)]
     pub voice: Option<String>,
 
+    /// Speech speed for TTS tools (0.5 to 4.0, default 1.0)
+    #[serde(default)]
+    pub speech_speed: Option<f32>,
+
     /// Tool-specific settings (stored as JSON value for flexibility)
     #[serde(default)]
     pub settings: serde_json::Value,
@@ -84,6 +88,7 @@ impl Default for ToolConfig {
             hotkey: None,
             special_hotkey: None,
             voice: None,
+            speech_speed: None,
             settings: serde_json::Value::Null,
         }
     }

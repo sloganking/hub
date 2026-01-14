@@ -190,6 +190,17 @@ impl ProcessManager {
             cmd.arg(arg_name).arg(voice);
             println!("  Passing voice: {} {}", arg_name, voice);
         }
+
+        // Pass speech speed for TTS tools
+        if let Some(speed) = tool_config.speech_speed {
+            match tool_id {
+                ToolId::SpeakSelected | ToolId::QuickAssistant => {
+                    cmd.arg("--speech-speed").arg(speed.to_string());
+                    println!("  Passing speech speed: {}", speed);
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Stop a tool process (whether spawned by us or running externally)

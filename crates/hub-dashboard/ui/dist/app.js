@@ -68,6 +68,24 @@ const VOICE_OPTIONS = [
     { value: 'shimmer', label: 'Shimmer' },
 ];
 
+// Speech speed options for TTS tools
+const SPEED_OPTIONS = [
+    { value: 0.75, label: '0.75x (Slow)' },
+    { value: 1.0, label: '1.0x (Normal)' },
+    { value: 1.25, label: '1.25x' },
+    { value: 1.5, label: '1.5x' },
+    { value: 1.75, label: '1.75x' },
+    { value: 2.0, label: '2.0x (Fast)' },
+    { value: 2.5, label: '2.5x' },
+    { value: 3.0, label: '3.0x (Very Fast)' },
+];
+
+// Default speech speeds per tool
+const DEFAULT_SPEEDS = {
+    'speak-selected': 1.5,
+    'quick-assistant': 1.0,
+};
+
 // All available hotkeys - lowercase kebab-case for clap ValueEnum
 const HOTKEY_OPTIONS = [
     { value: '', label: '-- Select Key --' },
@@ -377,6 +395,24 @@ function renderTools() {
             `;
         }
         
+        // Build speech speed selector for TTS tools
+        let speedHtml = '';
+        if (tool.hasVoice) {
+            const defaultSpeed = DEFAULT_SPEEDS[tool.id] || 1.0;
+            const currentSpeed = toolConfig.speech_speed ?? defaultSpeed;
+            const speedOptions = SPEED_OPTIONS.map(opt => 
+                `<option value="${opt.value}" ${currentSpeed === opt.value ? 'selected' : ''}>${opt.label}</option>`
+            ).join('');
+            speedHtml = `
+                <div class="tool-voice">
+                    <label class="voice-label">Speed:</label>
+                    <select class="speed-select" id="speed-${tool.id}" ${isRunning || isPending ? 'disabled' : ''}>
+                        ${speedOptions}
+                    </select>
+                </div>
+            `;
+        }
+        
         // Determine what's blocking the start
         let blockReason = '';
         if (!isRunning && !isPending) {
@@ -424,6 +460,7 @@ function renderTools() {
             ${tool.requiresApiKey ? `<p class="hint ${needsApiKeyButMissing ? 'warning' : ''}">Requires API key${needsApiKeyButMissing ? ' ⚠️' : ' ✓'}</p>` : ''}
             ${hotkeyHtml}
             ${voiceHtml}
+            ${speedHtml}
             <div class="tool-actions">
                 ${buttonHtml}
             </div>
@@ -446,6 +483,14 @@ function renderTools() {
         const select = document.getElementById(`voice-${tool.id}`);
         if (select) {
             select.addEventListener('change', () => saveVoiceForTool(tool.id, select.value));
+        }
+    });
+    
+    // Add change listeners to speed selects
+    TOOLS.filter(t => t.hasVoice).forEach(tool => {
+        const select = document.getElementById(`speed-${tool.id}`);
+        if (select) {
+            select.addEventListener('change', () => saveSpeedForTool(tool.id, parseFloat(select.value)));
         }
     });
 }
@@ -520,9 +565,11 @@ function updateToolCards() {
             }
         }
         
-        // Disable voice select when running or pending
+        // Disable voice and speed selects when running or pending
         const voiceSelect = card.querySelector('.voice-select');
         if (voiceSelect) voiceSelect.disabled = isRunning || isPending;
+        const speedSelect = card.querySelector('.speed-select');
+        if (speedSelect) speedSelect.disabled = isRunning || isPending;
         
         // Update block reason
         let blockReasonEl = card.querySelector('.block-reason');
@@ -558,7 +605,8 @@ async function saveHotkeyForTool(toolId, hotkey) {
                 auto_start: existingConfig.auto_start || false,
                 hotkey: tool.id === toolId ? (hotkey || null) : (existingConfig.hotkey || null),
                 special_hotkey: existingConfig.special_hotkey || null,
-                voice: existingConfig.voice || null
+                voice: existingConfig.voice || null,
+                speech_speed: existingConfig.speech_speed || null
             };
         });
         
@@ -593,7 +641,8 @@ async function saveVoiceForTool(toolId, voice) {
                 auto_start: existingConfig.auto_start || false,
                 hotkey: existingConfig.hotkey || null,
                 special_hotkey: existingConfig.special_hotkey || null,
-                voice: tool.id === toolId ? (voice || null) : (existingConfig.voice || null)
+                voice: tool.id === toolId ? (voice || null) : (existingConfig.voice || null),
+                speech_speed: existingConfig.speech_speed || null
             };
         });
         
@@ -604,6 +653,40 @@ async function saveVoiceForTool(toolId, voice) {
     } catch (e) {
         console.error('Failed to save voice:', e);
         alert(`Failed to save voice: ${e}`);
+    }
+}
+
+async function saveSpeedForTool(toolId, speed) {
+    if (!tauriReady) return;
+    
+    try {
+        // Build updated config
+        const newConfig = {
+            auto_start: config.auto_start || false,
+            start_minimized: config.start_minimized || false,
+            dark_mode: config.dark_mode !== false,
+            tools: {}
+        };
+        
+        TOOLS.forEach(tool => {
+            const existingConfig = config.tools?.[tool.id] || {};
+            newConfig.tools[tool.id] = {
+                enabled: true,
+                auto_start: existingConfig.auto_start || false,
+                hotkey: existingConfig.hotkey || null,
+                special_hotkey: existingConfig.special_hotkey || null,
+                voice: existingConfig.voice || null,
+                speech_speed: tool.id === toolId ? speed : (existingConfig.speech_speed || null)
+            };
+        });
+        
+        await invoke('save_config', { config: newConfig });
+        config = newConfig;
+        
+        console.log(`Saved speed ${speed} for ${toolId}`);
+    } catch (e) {
+        console.error('Failed to save speed:', e);
+        alert(`Failed to save speed: ${e}`);
     }
 }
 
@@ -717,7 +800,8 @@ function setupEventListeners() {
                     auto_start: document.getElementById(`autoStart-${tool.id}`)?.checked || false,
                     hotkey: existingConfig.hotkey || null,
                     special_hotkey: existingConfig.special_hotkey || null,
-                    voice: existingConfig.voice || null
+                    voice: existingConfig.voice || null,
+                    speech_speed: existingConfig.speech_speed || null
                 };
             });
             
