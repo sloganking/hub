@@ -237,6 +237,11 @@ pub fn scan_external_processes(state: State<AppState>) {
 
 #[tauri::command]
 pub fn start_tool(state: State<AppState>, tool_id: String) -> Result<(), String> {
+    // Check if user is authorized (valid license or active trial)
+    if !hub_licensing::is_authorized() {
+        return Err("License required. Please activate a license or start a free trial.".to_string());
+    }
+    
     let tool = string_to_tool_id(&tool_id).ok_or("Unknown tool")?;
     
     // Get the tool's configuration (including hotkey)

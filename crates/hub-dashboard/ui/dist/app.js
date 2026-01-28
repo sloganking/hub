@@ -253,6 +253,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderAutoStartTools();
             renderLicenseTab();
             
+            // If not authorized, show the License tab by default
+            if (authStatus && !['Licensed', 'Trial'].includes(authStatus.type)) {
+                switchToTab('license');
+            }
+            
             // Initial scan for external processes (one-time, can be slow)
             // Use setTimeout to let UI render the "Checking..." state first
             await new Promise(resolve => setTimeout(resolve, 50));
@@ -283,13 +288,20 @@ function setupTabs() {
     tabButtons.forEach(button => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
-            const tabId = button.dataset.tab;
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            button.classList.add('active');
-            document.getElementById(tabId)?.classList.add('active');
+            switchToTab(button.dataset.tab);
         });
     });
+}
+
+window.switchToTab = function(tabId) {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    tabContents.forEach(content => content.classList.remove('active'));
+    
+    document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
+    document.getElementById(tabId)?.classList.add('active');
 }
 
 async function loadConfig() {
@@ -348,6 +360,21 @@ function renderTools() {
     const grid = document.getElementById('toolsGrid');
     if (!grid) return;
     grid.innerHTML = '';
+    
+    // Show license warning if not authorized
+    const isAuthorized = authStatus && ['Licensed', 'Trial'].includes(authStatus.type);
+    if (!isAuthorized && authStatus) {
+        const banner = document.createElement('div');
+        banner.className = 'license-warning-banner';
+        banner.innerHTML = `
+            <div class="license-warning-content">
+                <span class="license-warning-icon">🔒</span>
+                <span class="license-warning-text">License required to start tools. </span>
+                <button class="btn btn-primary btn-small" onclick="switchToTab('license')">Get License</button>
+            </div>
+        `;
+        grid.appendChild(banner);
+    }
     
     TOOLS.forEach(tool => {
         const status = toolStatuses[tool.id] || 'Stopped';

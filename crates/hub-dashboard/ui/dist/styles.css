@@ -889,3 +889,30 @@ body.light-mode {
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: 1px;
 }
+
+/* License Warning Banner */
+.license-warning-banner {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(248, 81, 73, 0.15) 0%, var(--bg-card) 100%);
+    border: 1px solid var(--error);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 16px;
+}
+
+.license-warning-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.license-warning-icon {
+    font-size: 24px;
+}
+
+.license-warning-text {
+    flex: 1;
+    color: var(--text-primary);
+    font-size: 14px;
+}

@@ -71,6 +71,12 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
 }
 
 fn auto_start_tools<R: Runtime>(app: &AppHandle<R>) {
+    // Check if user is authorized (valid license or active trial)
+    if !hub_licensing::is_authorized() {
+        println!("Not authorized - skipping auto-start of tools");
+        return;
+    }
+    
     let state = app.state::<AppState>();
     let config = state.config.read().clone();
     let has_api_key = hub_common::config::has_api_key();
