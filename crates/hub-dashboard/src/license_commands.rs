@@ -68,25 +68,45 @@ pub async fn deactivate_license() -> Result<bool, String> {
 }
 
 /// Get the LemonSqueezy checkout URL for purchasing
-/// 
-/// To get these URLs:
-/// 1. Go to LemonSqueezy dashboard > Products
-/// 2. Click on your product
-/// 3. Click "Share" button
-/// 4. Copy the checkout URL
 #[tauri::command]
 pub fn get_checkout_url(plan: String) -> String {
-    // TODO: Replace these with your actual checkout URLs from LemonSqueezy dashboard
-    // Format: https://[store].lemonsqueezy.com/checkout/buy/[variant-uuid]
     match plan.as_str() {
-        // Subscription product variants
-        "monthly" => "https://slking.lemonsqueezy.com/buy/productivity-hub".to_string(),
-        "yearly" => "https://slking.lemonsqueezy.com/buy/productivity-hub".to_string(),
+        // Subscription (monthly/yearly variants are on the same checkout page)
+        "monthly" | "yearly" => "https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077".to_string(),
         // Lifetime product
-        "lifetime" => "https://slking.lemonsqueezy.com/buy/productivity-hub-lifetime".to_string(),
+        "lifetime" => "https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb".to_string(),
         // Fallback to store page
         _ => "https://slking.lemonsqueezy.com".to_string(),
     }
+}
+
+/// Open a checkout URL in the default browser
+#[tauri::command]
+pub fn open_checkout(plan: String) -> Result<(), String> {
+    let url = match plan.as_str() {
+        "monthly" | "yearly" => "https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077",
+        "lifetime" => "https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb",
+        _ => "https://slking.lemonsqueezy.com",
+    };
+    
+    // Use the Windows shell to open the URL
+    #[cfg(windows)]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", url])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    
+    #[cfg(not(windows))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
 }
 
 // Response types for frontend

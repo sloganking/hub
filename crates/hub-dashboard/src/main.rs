@@ -131,6 +131,7 @@ fn main() {
             license_commands::validate_license,
             license_commands::deactivate_license,
             license_commands::get_checkout_url,
+            license_commands::open_checkout,
         ])
         .on_menu_event(|app, event| {
             handle_menu_event(app, event.id().as_ref());

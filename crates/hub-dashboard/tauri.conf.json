@@ -38,6 +38,7 @@
     "licenseFile": "../../LICENSE"
   },
   "app": {
+    "withGlobalTauri": true,
     "security": {
       "csp": null,
       "assetProtocol": {

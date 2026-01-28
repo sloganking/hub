@@ -1024,12 +1024,10 @@ window.openCheckout = async function(plan) {
     if (!tauriReady) return;
     
     try {
-        const url = await invoke('get_checkout_url', { plan });
-        // Use Tauri opener plugin to open URL in default browser
-        await invoke('plugin:opener|open_url', { url });
+        // Use our Rust command to open the URL in the default browser
+        await invoke('open_checkout', { plan });
     } catch (e) {
-        // Fallback to window.open
-        const url = await invoke('get_checkout_url', { plan });
-        window.open(url, '_blank');
+        console.error('Failed to open checkout:', e);
+        alert('Failed to open checkout page. Please visit: slking.lemonsqueezy.com');
     }
 };
