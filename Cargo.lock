@@ -4443,6 +4443,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "hub-common",
+ "hub-licensing",
  "once_cell",
  "parking_lot",
  "serde",
@@ -4452,6 +4453,21 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "tokio",
+]
+
+[[package]]
+name = "hub-licensing"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "directories",
+ "hostname",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

@@ -1,0 +1,17 @@
+[package]
+name = "hub-licensing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LemonSqueezy licensing integration for Productivity Hub"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+directories.workspace = true
+reqwest = { version = "0.12", features = ["json"] }
+tokio.workspace = true
+hostname = "0.3"

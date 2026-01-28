@@ -15,6 +15,7 @@
 
         <div class="tabs">
             <button class="tab-button active" data-tab="tools">Tools</button>
+            <button class="tab-button" data-tab="license">License</button>
             <button class="tab-button" data-tab="settings">Settings</button>
         </div>
 
@@ -22,6 +23,69 @@
         <div class="tab-content active" id="tools">
             <div class="tools-grid" id="toolsGrid">
                 <!-- Tools will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- License Tab -->
+        <div class="tab-content" id="license">
+            <div class="license-container">
+                <!-- License Status Section -->
+                <div class="section license-status-section" id="licenseStatusSection">
+                    <div id="licenseStatusContent">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Trial Section (shown when no license) -->
+                <div class="section" id="trialSection" style="display: none;">
+                    <h2>Free Trial</h2>
+                    <p class="hint">Try all features free for 7 days. No credit card required.</p>
+                    <button id="startTrialBtn" class="btn btn-primary btn-large">Start 7-Day Free Trial</button>
+                </div>
+
+                <!-- Activate License Section -->
+                <div class="section" id="activateLicenseSection">
+                    <h2>Activate License</h2>
+                    <p class="hint">Enter your license key to unlock all features.</p>
+                    <div class="input-group">
+                        <input type="text" id="licenseKeyInput" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX">
+                        <button id="activateLicenseBtn" class="btn btn-primary">Activate</button>
+                    </div>
+                    <div class="status" id="licenseActivateStatus"></div>
+                </div>
+
+                <!-- Buy Section -->
+                <div class="section" id="buySection">
+                    <h2>Get a License</h2>
+                    <p class="hint">Unlock all features with a subscription.</p>
+                    <div class="pricing-cards">
+                        <div class="pricing-card">
+                            <h3>Monthly</h3>
+                            <div class="price">$15<span>/month</span></div>
+                            <p>Cancel anytime</p>
+                            <button class="btn btn-secondary" onclick="openCheckout('monthly')">Subscribe</button>
+                        </div>
+                        <div class="pricing-card featured">
+                            <div class="badge">Best Value</div>
+                            <h3>Yearly</h3>
+                            <div class="price">$150<span>/year</span></div>
+                            <p>Save $30 (2 months free)</p>
+                            <button class="btn btn-primary" onclick="openCheckout('yearly')">Subscribe</button>
+                        </div>
+                        <div class="pricing-card">
+                            <h3>Lifetime</h3>
+                            <div class="price">$450<span> once</span></div>
+                            <p>Pay once, use forever</p>
+                            <button class="btn btn-secondary" onclick="openCheckout('lifetime')">Buy Now</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deactivate Section (shown when licensed) -->
+                <div class="section" id="deactivateSection" style="display: none;">
+                    <button id="deactivateLicenseBtn" class="btn btn-danger btn-small">Deactivate License</button>
+                    <p class="hint">Remove this license from this machine to use it elsewhere.</p>
+                </div>
             </div>
         </div>
 

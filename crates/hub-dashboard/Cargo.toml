@@ -10,6 +10,7 @@ tauri-build.workspace = true
 
 [dependencies]
 hub-common.workspace = true
+hub-licensing.workspace = true
 anyhow.workspace = true
 tokio.workspace = true
 serde.workspace = true

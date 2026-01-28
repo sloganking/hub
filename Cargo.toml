@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/hub-common",
+    "crates/hub-licensing",
     "crates/hub-dashboard",
     "tools/desk-talk",
     "tools/speak-selected",
@@ -44,5 +45,6 @@ tauri-build = { version = "2.0", features = [] }
 tauri-plugin-opener = "2.0"
 tauri-plugin-single-instance = "2.0"
 
-# Hub-common as a path dependency
+# Hub crates as path dependencies
 hub-common = { path = "crates/hub-common" }
+hub-licensing = { path = "crates/hub-licensing" }

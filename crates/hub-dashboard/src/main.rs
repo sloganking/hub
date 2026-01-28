@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release mode
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod license_commands;
 mod process_manager;
 mod tauri_commands;
 
@@ -107,6 +108,7 @@ fn main() {
         }))
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
+            // Config commands
             tauri_commands::get_config,
             tauri_commands::save_config,
             tauri_commands::has_api_key,
@@ -120,6 +122,15 @@ fn main() {
             tauri_commands::start_tool,
             tauri_commands::stop_tool,
             tauri_commands::open_tool_settings,
+            // License commands
+            license_commands::get_auth_status,
+            license_commands::is_authorized,
+            license_commands::get_trial_info,
+            license_commands::start_trial,
+            license_commands::activate_license,
+            license_commands::validate_license,
+            license_commands::deactivate_license,
+            license_commands::get_checkout_url,
         ])
         .on_menu_event(|app, event| {
             handle_menu_event(app, event.id().as_ref());

@@ -218,6 +218,7 @@ let toolStatuses = {};
 let config = {};
 let tauriReady = false;
 let hasApiKey = false;
+let authStatus = null; // License/trial status
 
 function initTauri() {
     if (window.__TAURI_INTERNALS__) {
@@ -246,9 +247,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (initTauri()) {
         try {
             await loadConfig();
+            await loadAuthStatus();
             // Re-render with config but still checking
             renderTools();
             renderAutoStartTools();
+            renderLicenseTab();
             
             // Initial scan for external processes (one-time, can be slow)
             // Use setTimeout to let UI render the "Checking..." state first
@@ -267,6 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         setupEventListeners();
+        setupLicenseEventListeners();
         // Fast polling - only checks processes we spawned
         setInterval(loadToolStatuses, 2000);
     }
@@ -865,5 +869,167 @@ window.openToolSettings = async function(toolId) {
         await invoke('open_tool_settings', { toolId });
     } catch (e) {
         alert(`Failed to open settings: ${e}`);
+    }
+};
+
+// === License Functions ===
+
+async function loadAuthStatus() {
+    if (!tauriReady) return;
+    try {
+        authStatus = await invoke('get_auth_status');
+        console.log('Auth status:', authStatus);
+    } catch (e) {
+        console.error('Failed to load auth status:', e);
+        authStatus = { type: 'NoLicense' };
+    }
+}
+
+function renderLicenseTab() {
+    const statusSection = document.getElementById('licenseStatusSection');
+    const statusContent = document.getElementById('licenseStatusContent');
+    const trialSection = document.getElementById('trialSection');
+    const activateSection = document.getElementById('activateLicenseSection');
+    const buySection = document.getElementById('buySection');
+    const deactivateSection = document.getElementById('deactivateSection');
+    
+    if (!authStatus) {
+        statusContent.innerHTML = '<p>Loading...</p>';
+        return;
+    }
+    
+    // Reset classes
+    statusSection.classList.remove('licensed', 'trial', 'expired');
+    
+    switch (authStatus.type) {
+        case 'Licensed':
+            statusSection.classList.add('licensed');
+            statusContent.innerHTML = `
+                <div class="license-status-icon">✓</div>
+                <div class="license-status-title">Licensed - ${authStatus.plan}</div>
+                <div class="license-status-subtitle">All features unlocked</div>
+                <div class="license-key-display">Key: ${authStatus.key_preview}</div>
+            `;
+            trialSection.style.display = 'none';
+            activateSection.style.display = 'none';
+            buySection.style.display = 'none';
+            deactivateSection.style.display = 'block';
+            break;
+            
+        case 'Trial':
+            statusSection.classList.add('trial');
+            statusContent.innerHTML = `
+                <div class="license-status-icon">⏱️</div>
+                <div class="license-status-title">Free Trial</div>
+                <div class="trial-countdown">${authStatus.days_remaining}d ${authStatus.hours_remaining}h remaining</div>
+                <div class="license-status-subtitle">All features unlocked during trial</div>
+            `;
+            trialSection.style.display = 'none';
+            activateSection.style.display = 'block';
+            buySection.style.display = 'block';
+            deactivateSection.style.display = 'none';
+            break;
+            
+        case 'TrialExpired':
+            statusSection.classList.add('expired');
+            statusContent.innerHTML = `
+                <div class="license-status-icon">⚠️</div>
+                <div class="license-status-title">Trial Expired</div>
+                <div class="license-status-subtitle">Purchase a license to continue using all features</div>
+            `;
+            trialSection.style.display = 'none';
+            activateSection.style.display = 'block';
+            buySection.style.display = 'block';
+            deactivateSection.style.display = 'none';
+            break;
+            
+        case 'NoLicense':
+        default:
+            statusContent.innerHTML = `
+                <div class="license-status-icon">🔒</div>
+                <div class="license-status-title">No License</div>
+                <div class="license-status-subtitle">Start a free trial or purchase a license</div>
+            `;
+            trialSection.style.display = 'block';
+            activateSection.style.display = 'block';
+            buySection.style.display = 'block';
+            deactivateSection.style.display = 'none';
+            break;
+    }
+}
+
+function setupLicenseEventListeners() {
+    // Start trial button
+    document.getElementById('startTrialBtn')?.addEventListener('click', async () => {
+        try {
+            await invoke('start_trial');
+            await loadAuthStatus();
+            renderLicenseTab();
+        } catch (e) {
+            alert(`Failed to start trial: ${e}`);
+        }
+    });
+    
+    // Activate license button
+    document.getElementById('activateLicenseBtn')?.addEventListener('click', async () => {
+        const keyInput = document.getElementById('licenseKeyInput');
+        const status = document.getElementById('licenseActivateStatus');
+        const key = keyInput.value.trim();
+        
+        if (!key) {
+            status.textContent = 'Please enter a license key';
+            status.className = 'status error';
+            return;
+        }
+        
+        status.textContent = 'Activating...';
+        status.className = 'status';
+        
+        try {
+            const result = await invoke('activate_license', { licenseKey: key });
+            if (result.success) {
+                status.textContent = 'License activated!';
+                status.className = 'status success';
+                keyInput.value = '';
+                await loadAuthStatus();
+                renderLicenseTab();
+            } else {
+                status.textContent = result.error || 'Activation failed';
+                status.className = 'status error';
+            }
+        } catch (e) {
+            status.textContent = `Error: ${e}`;
+            status.className = 'status error';
+        }
+    });
+    
+    // Deactivate license button
+    document.getElementById('deactivateLicenseBtn')?.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to deactivate your license on this machine?')) {
+            return;
+        }
+        
+        try {
+            await invoke('deactivate_license');
+            await loadAuthStatus();
+            renderLicenseTab();
+        } catch (e) {
+            alert(`Failed to deactivate: ${e}`);
+        }
+    });
+}
+
+// Open checkout URL
+window.openCheckout = async function(plan) {
+    if (!tauriReady) return;
+    
+    try {
+        const url = await invoke('get_checkout_url', { plan });
+        // Use Tauri opener plugin to open URL in default browser
+        await invoke('plugin:opener|open_url', { url });
+    } catch (e) {
+        // Fallback to window.open
+        const url = await invoke('get_checkout_url', { plan });
+        window.open(url, '_blank');
     }
 };
