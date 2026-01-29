@@ -26,3 +26,4 @@ crates/hub-dashboard/tauri.conf.dev.json
 *.log
 
 .env
+
