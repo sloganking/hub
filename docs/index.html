@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Hub - Your AI-Powered Productivity Suite</title>
+    <meta name="description" content="Supercharge your workflow with voice-to-text, AI transcription, text-to-speech, and more. One subscription, six powerful tools.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #1c2128;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #f0a500;
+            --accent-hover: #ffb627;
+            --success: #3fb950;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 32px;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            line-height: 1.1;
+        }
+
+        .hero h1 span {
+            color: var(--accent);
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        /* Features */
+        .features {
+            padding: 100px 0;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 40px;
+            margin-bottom: 60px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* Pricing */
+        .pricing {
+            padding: 100px 0;
+            background: var(--bg-secondary);
+        }
+
+        .pricing h2 {
+            text-align: center;
+            font-size: 40px;
+            margin-bottom: 16px;
+        }
+
+        .pricing-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 60px;
+        }
+
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            position: relative;
+        }
+
+        .pricing-card.featured {
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .pricing-card .badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #000;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 16px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .pricing-card h3 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .pricing-card .price {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .pricing-card .price span {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        .pricing-card .price-note {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .pricing-card .btn {
+            width: 100%;
+        }
+
+        /* Download */
+        .download {
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .download h2 {
+            font-size: 40px;
+            margin-bottom: 16px;
+        }
+
+        .download p {
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+
+        .download-info {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 24px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--accent);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero p {
+                font-size: 18px;
+            }
+
+            .pricing-card.featured {
+                transform: none;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo">Productivity<span>Hub</span></a>
+                <nav class="nav-links">
+                    <a href="#features">Features</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="#download">Download</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Supercharge Your <span>Productivity</span></h1>
+            <p>Six powerful AI tools in one unified suite. Voice-to-text, text-to-speech, AI assistant, and more. Work faster, type less.</p>
+            <div class="hero-buttons">
+                <a href="#download" class="btn btn-primary">Download Free Trial</a>
+                <a href="#features" class="btn btn-secondary">See Features</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="container">
+            <h2>Everything You Need</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎙️</div>
+                    <h3>DeskTalk</h3>
+                    <p>Real-time voice-to-text transcription. Push a button, speak, and watch your words appear. Perfect for writing emails, documents, and notes.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔊</div>
+                    <h3>Speak Selected</h3>
+                    <p>Select any text and have it read aloud with natural AI voices. Great for proofreading or listening to articles while you work.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>Quick Assistant</h3>
+                    <p>Voice-activated AI assistant at your fingertips. Ask questions, get answers, all without typing a single word.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✏️</div>
+                    <h3>Typo Fix</h3>
+                    <p>Select text with typos and fix them instantly with AI. One hotkey to clean up your writing.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>Flatten String</h3>
+                    <p>Instantly remove line breaks from copied text. Perfect for cleaning up code or text from PDFs.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📷</div>
+                    <h3>OCR Paste</h3>
+                    <p>Copy images, extract text. Paste screenshots and get editable text using AI-powered OCR.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <h2>Simple Pricing</h2>
+            <p class="pricing-subtitle">Start with a 7-day free trial. No credit card required.</p>
+            <div class="pricing-cards">
+                <div class="pricing-card">
+                    <h3>Monthly</h3>
+                    <div class="price">$15<span>/mo</span></div>
+                    <p class="price-note">Cancel anytime</p>
+                    <a href="https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077" class="btn btn-secondary">Subscribe</a>
+                </div>
+                <div class="pricing-card featured">
+                    <div class="badge">Best Value</div>
+                    <h3>Yearly</h3>
+                    <div class="price">$150<span>/yr</span></div>
+                    <p class="price-note">Save $30 (2 months free)</p>
+                    <a href="https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077" class="btn btn-primary">Subscribe</a>
+                </div>
+                <div class="pricing-card">
+                    <h3>Lifetime</h3>
+                    <div class="price">$450</div>
+                    <p class="price-note">One-time payment</p>
+                    <a href="https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb" class="btn btn-secondary">Buy Now</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="download" id="download">
+        <div class="container">
+            <h2>Get Started Now</h2>
+            <p>Download Productivity Hub and start your 7-day free trial today.</p>
+            <a href="https://github.com/sloganking/hub/releases/latest/download/Productivity.Hub_0.1.0_x64-setup.exe" class="btn btn-primary">Download for Windows</a>
+            <p class="download-info">Windows 10/11 64-bit required. Requires your own OpenAI API key.</p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 SLKing LLC. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
