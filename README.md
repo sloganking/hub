@@ -2,6 +2,8 @@
 
 A unified dashboard for managing a suite of productivity tools with shared configuration and a single installer.
 
+Live website: https://sloganking.github.io/hub/
+
 ## Included Tools
 
 | Tool | Description | Hotkey-Activated |
