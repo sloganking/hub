@@ -916,3 +916,17 @@ body.light-mode {
     color: var(--text-primary);
     font-size: 14px;
 }
+
+/* API Key Help Links */
+.api-key-help {
+    margin-top: 12px;
+}
+
+.api-key-help a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.api-key-help a:hover {
+    text-decoration: underline;
+}

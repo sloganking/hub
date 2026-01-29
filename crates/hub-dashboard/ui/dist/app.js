@@ -845,6 +845,33 @@ function setupEventListeners() {
             status.className = 'status error';
         }
     });
+    
+    // OpenAI API key help links
+    document.getElementById('openaiApiKeysLink')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+            await invoke('open_checkout', { plan: 'openai-keys' });
+        } catch (error) {
+            window.open('https://platform.openai.com/api-keys', '_blank');
+        }
+    });
+    
+    document.getElementById('apiKeyVideoLink')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+            await invoke('open_checkout', { plan: 'video-tutorial' });
+        } catch (error) {
+            window.open('https://youtu.be/SzPE_AE0eEo?si=WbJP-ABj0uG5s-XV', '_blank');
+        }
+    });
+    
+    document.getElementById('viewUsageBtn')?.addEventListener('click', async () => {
+        try {
+            await invoke('open_checkout', { plan: 'openai-usage' });
+        } catch (error) {
+            window.open('https://platform.openai.com/usage', '_blank');
+        }
+    });
 }
 
 window.startTool = async function(toolId) {

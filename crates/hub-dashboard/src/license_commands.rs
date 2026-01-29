@@ -80,12 +80,18 @@ pub fn get_checkout_url(plan: String) -> String {
     }
 }
 
-/// Open a checkout URL in the default browser
+/// Open a URL in the default browser
 #[tauri::command]
 pub fn open_checkout(plan: String) -> Result<(), String> {
     let url = match plan.as_str() {
+        // LemonSqueezy checkout URLs
         "monthly" | "yearly" => "https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077",
         "lifetime" => "https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb",
+        // OpenAI help links
+        "openai-keys" => "https://platform.openai.com/api-keys",
+        "openai-usage" => "https://platform.openai.com/usage",
+        "video-tutorial" => "https://youtu.be/SzPE_AE0eEo?si=WbJP-ABj0uG5s-XV",
+        // Fallback
         _ => "https://slking.lemonsqueezy.com",
     };
     

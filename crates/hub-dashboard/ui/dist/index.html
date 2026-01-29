@@ -101,6 +101,10 @@
                         <input type="password" id="apiKey" placeholder="sk-...">
                     </div>
                     <button id="saveApiKeyBtn" class="btn btn-primary">Save API Key</button>
+                    <p class="hint api-key-help">
+                        Get your API key from <a href="#" id="openaiApiKeysLink">OpenAI</a> • 
+                        <a href="#" id="apiKeyVideoLink">Video Tutorial</a>
+                    </p>
                 </div>
                 
                 <!-- State: API key is set -->
@@ -110,6 +114,7 @@
                         <button id="toggleApiKey" class="btn btn-icon btn-toggle-key" title="Show/Hide">👁️</button>
                         <button id="deleteApiKeyBtn" class="btn btn-danger btn-small">Delete</button>
                     </div>
+                    <button id="viewUsageBtn" class="btn btn-secondary btn-small">View Usage & Billing</button>
                 </div>
                 
                 <div class="status" id="apiKeyStatus"></div>
