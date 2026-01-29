@@ -2580,7 +2580,6 @@ dependencies = [
  "anyhow",
  "async-openai 0.14.3",
  "async-std",
- "chrono",
  "clap",
  "clipboard",
  "cpal",
@@ -2589,7 +2588,6 @@ dependencies = [
  "dotenvy",
  "enigo",
  "flume",
- "hostname",
  "hound",
  "humantime",
  "keyring",
@@ -2609,7 +2607,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "ureq",
- "uuid",
  "winreg 0.52.0",
 ]
 
