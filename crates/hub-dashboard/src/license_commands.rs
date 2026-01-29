@@ -1,9 +1,6 @@
 //! Tauri commands for license management
 
-use hub_licensing::{
-    AuthStatus, TrialInfo,
-    lemonsqueezy, trial,
-};
+use hub_licensing::{lemonsqueezy, trial, AuthStatus, TrialInfo};
 use serde::{Deserialize, Serialize};
 
 /// Get current authorization status
@@ -36,7 +33,7 @@ pub async fn activate_license(license_key: String) -> Result<ActivationResultRes
     let result = lemonsqueezy::activate_and_save(&license_key)
         .await
         .map_err(|e| e.to_string())?;
-    
+
     Ok(ActivationResultResponse {
         success: result.activated,
         error: result.error,
@@ -51,7 +48,7 @@ pub async fn validate_license() -> Result<ValidationResultResponse, String> {
     let result = lemonsqueezy::validate_existing()
         .await
         .map_err(|e| e.to_string())?;
-    
+
     Ok(ValidationResultResponse {
         valid: result.valid,
         error: result.error,
@@ -72,9 +69,15 @@ pub async fn deactivate_license() -> Result<bool, String> {
 pub fn get_checkout_url(plan: String) -> String {
     match plan.as_str() {
         // Subscription (monthly/yearly variants are on the same checkout page)
-        "monthly" | "yearly" => "https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077".to_string(),
+        "monthly" | "yearly" => {
+            "https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077"
+                .to_string()
+        }
         // Lifetime product
-        "lifetime" => "https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb".to_string(),
+        "lifetime" => {
+            "https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb"
+                .to_string()
+        }
         // Fallback to store page
         _ => "https://slking.lemonsqueezy.com".to_string(),
     }
@@ -85,8 +88,12 @@ pub fn get_checkout_url(plan: String) -> String {
 pub fn open_checkout(plan: String) -> Result<(), String> {
     let url = match plan.as_str() {
         // LemonSqueezy checkout URLs
-        "monthly" | "yearly" => "https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077",
-        "lifetime" => "https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb",
+        "monthly" | "yearly" => {
+            "https://slking.lemonsqueezy.com/checkout/buy/e84ca54b-c009-4262-a434-2528592e4077"
+        }
+        "lifetime" => {
+            "https://slking.lemonsqueezy.com/checkout/buy/346b4776-f424-4c23-8980-227233e240cb"
+        }
         // OpenAI help links
         "openai-keys" => "https://platform.openai.com/api-keys",
         "openai-usage" => "https://platform.openai.com/usage",
@@ -94,7 +101,7 @@ pub fn open_checkout(plan: String) -> Result<(), String> {
         // Fallback
         _ => "https://slking.lemonsqueezy.com",
     };
-    
+
     // Use the Windows shell to open the URL
     #[cfg(windows)]
     {
@@ -103,7 +110,7 @@ pub fn open_checkout(plan: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| e.to_string())?;
     }
-    
+
     #[cfg(not(windows))]
     {
         std::process::Command::new("xdg-open")
@@ -111,7 +118,7 @@ pub fn open_checkout(plan: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
 }
 

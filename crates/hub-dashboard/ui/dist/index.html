@@ -101,10 +101,6 @@
                         <input type="password" id="apiKey" placeholder="sk-...">
                     </div>
                     <button id="saveApiKeyBtn" class="btn btn-primary">Save API Key</button>
-                    <p class="hint api-key-help">
-                        Get your API key from <a href="#" id="openaiApiKeysLink">OpenAI</a> • 
-                        <a href="#" id="apiKeyVideoLink">Video Tutorial</a>
-                    </p>
                 </div>
                 
                 <!-- State: API key is set -->
@@ -118,6 +114,15 @@
                 </div>
                 
                 <div class="status" id="apiKeyStatus"></div>
+                
+                <!-- Help links - always visible -->
+                <p class="hint api-key-help">
+                    Get your API key from <a href="#" id="openaiApiKeysLink">OpenAI</a> • 
+                    <a href="#" id="apiKeyVideoLink">Video Tutorial</a>
+                </p>
+                <p class="hint api-key-note">
+                    <strong>Note:</strong> New OpenAI accounts must add at least $5 in credits before API calls will work, even with auto-renew enabled.
+                </p>
             </div>
 
             <div class="section">
