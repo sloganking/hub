@@ -2580,6 +2580,7 @@ dependencies = [
  "anyhow",
  "async-openai 0.14.3",
  "async-std",
+ "chrono",
  "clap",
  "clipboard",
  "cpal",
