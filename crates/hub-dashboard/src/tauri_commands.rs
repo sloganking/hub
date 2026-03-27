@@ -311,6 +311,53 @@ pub fn open_tool_settings(state: State<AppState>, tool_id: String) -> Result<(),
     Ok(())
 }
 
+// === DeskTalk parallel config ===
+
+fn desktalk_config_path() -> Result<std::path::PathBuf, String> {
+    let proj_dirs = directories::ProjectDirs::from("com", "desk-talk", "desk-talk")
+        .ok_or("Failed to determine DeskTalk config directory")?;
+    let config_dir = proj_dirs.config_dir();
+    std::fs::create_dir_all(config_dir).map_err(|e| e.to_string())?;
+    Ok(config_dir.join("config.json"))
+}
+
+/// Read DeskTalk parallel value (non-Tauri, for use from process_manager)
+pub fn get_desktalk_parallel_value() -> Result<usize, String> {
+    let path = desktalk_config_path()?;
+    if !path.exists() {
+        return Ok(1);
+    }
+    let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let val: serde_json::Value = serde_json::from_str(&contents).map_err(|e| e.to_string())?;
+    Ok(val.get("parallel").and_then(|v| v.as_u64()).unwrap_or(1) as usize)
+}
+
+#[tauri::command]
+pub fn get_desktalk_parallel() -> Result<usize, String> {
+    get_desktalk_parallel_value()
+}
+
+#[tauri::command]
+pub fn set_desktalk_parallel(value: usize) -> Result<(), String> {
+    let value = value.clamp(1, 5);
+    let path = desktalk_config_path()?;
+
+    let mut val: serde_json::Value = if path.exists() {
+        let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&contents).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    val.as_object_mut()
+        .ok_or("Config is not an object")?
+        .insert("parallel".to_string(), serde_json::json!(value));
+
+    let contents = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
+    std::fs::write(&path, contents).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Find a tool binary by name
 fn find_tool_binary(binary_name: &str) -> Option<std::path::PathBuf> {
     // Try to find relative to current executable (production layout)

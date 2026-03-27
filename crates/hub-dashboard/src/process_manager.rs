@@ -100,10 +100,19 @@ impl ProcessManager {
             }
         }
 
-        // Redirect stdin/stdout, but capture stderr for error reporting
         cmd.stdin(Stdio::null());
         cmd.stdout(Stdio::null());
-        cmd.stderr(Stdio::piped());
+        // GUI tools (DeskTalk, TypoFix) live long; piping stderr then dropping
+        // the read end creates a broken pipe that panics on any eprintln!().
+        // Only pipe stderr for CLI tools where we want early-exit error messages.
+        match tool_id {
+            ToolId::DeskTalk | ToolId::TypoFix => {
+                cmd.stderr(Stdio::null());
+            }
+            _ => {
+                cmd.stderr(Stdio::piped());
+            }
+        }
 
         // Start the process
         let mut child = cmd
@@ -146,14 +155,20 @@ impl ProcessManager {
 
     /// Add command-line arguments based on tool type
     fn add_tool_args(&self, cmd: &mut Command, tool_id: &ToolId, tool_config: &ToolConfig) {
-        // Skip for GUI apps that have their own config (desk-talk, typo-fix)
-        // These tools read from their own Tauri config files
-        match tool_id {
-            ToolId::DeskTalk | ToolId::TypoFix => {
-                // These have their own GUI config, don't pass CLI args
-                return;
+        // DeskTalk: pass --parallel via CLI (config-file path causes hangs)
+        if matches!(tool_id, ToolId::DeskTalk) {
+            if let Ok(parallel) = crate::tauri_commands::get_desktalk_parallel_value() {
+                if parallel > 1 {
+                    cmd.arg("--parallel").arg(parallel.to_string());
+                    println!("  Passing --parallel {} to DeskTalk", parallel);
+                }
             }
-            _ => {}
+            return;
+        }
+
+        // Skip for other GUI apps that have their own config
+        if matches!(tool_id, ToolId::TypoFix) {
+            return;
         }
 
         // For CLI tools, pass the hotkey as an argument

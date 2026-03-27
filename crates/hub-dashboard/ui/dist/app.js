@@ -219,6 +219,7 @@ let config = {};
 let tauriReady = false;
 let hasApiKey = false;
 let authStatus = null; // License/trial status
+let desktalkParallel = 1;
 
 function initTauri() {
     if (window.__TAURI_INTERNALS__) {
@@ -319,6 +320,12 @@ async function loadConfig() {
         
         hasApiKey = await invoke('has_api_key');
         updateApiKeyUI();
+        
+        try {
+            desktalkParallel = await invoke('get_desktalk_parallel');
+        } catch (e2) {
+            console.error('Failed to load DeskTalk parallel config:', e2);
+        }
     } catch (e) {
         console.error('Failed to load config:', e);
     }
@@ -409,6 +416,23 @@ function renderTools() {
             hotkeyHtml = `<div class="tool-hotkey"><span class="gui-note">Uses own settings</span></div>`;
         }
         
+        // Parallel requests selector for DeskTalk
+        let parallelHtml = '';
+        if (tool.id === 'desk-talk') {
+            const parallelOptions = [1,2,3,4,5].map(n =>
+                `<option value="${n}" ${desktalkParallel === n ? 'selected' : ''}>${n}${n === 1 ? ' (default)' : ''}</option>`
+            ).join('');
+            parallelHtml = `
+                <div class="tool-voice">
+                    <label class="voice-label">Parallel requests:</label>
+                    <select class="speed-select" id="parallel-desk-talk" ${isRunning || isPending ? 'disabled' : ''}>
+                        ${parallelOptions}
+                    </select>
+                    <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Races N transcriptions, uses fastest</span>
+                </div>
+            `;
+        }
+        
         // Build voice selector for TTS tools
         let voiceHtml = '';
         if (tool.hasVoice) {
@@ -490,6 +514,7 @@ function renderTools() {
             <p class="tool-description">${tool.description}</p>
             ${tool.requiresApiKey ? `<p class="hint ${needsApiKeyButMissing ? 'warning' : ''}">Requires API key${needsApiKeyButMissing ? ' ⚠️' : ' ✓'}</p>` : ''}
             ${hotkeyHtml}
+            ${parallelHtml}
             ${voiceHtml}
             ${speedHtml}
             <div class="tool-actions">
@@ -524,6 +549,12 @@ function renderTools() {
             select.addEventListener('change', () => saveSpeedForTool(tool.id, parseFloat(select.value)));
         }
     });
+    
+    // Add change listener for DeskTalk parallel selector
+    const parallelSelect = document.getElementById('parallel-desk-talk');
+    if (parallelSelect) {
+        parallelSelect.addEventListener('change', () => saveDesktalkParallel(parseInt(parallelSelect.value)));
+    }
 }
 
 function updateToolCards() {
@@ -596,11 +627,13 @@ function updateToolCards() {
             }
         }
         
-        // Disable voice and speed selects when running or pending
+        // Disable voice, speed and parallel selects when running or pending
         const voiceSelect = card.querySelector('.voice-select');
         if (voiceSelect) voiceSelect.disabled = isRunning || isPending;
         const speedSelect = card.querySelector('.speed-select');
         if (speedSelect) speedSelect.disabled = isRunning || isPending;
+        const parallelSelect = document.getElementById('parallel-desk-talk');
+        if (parallelSelect && tool.id === 'desk-talk') parallelSelect.disabled = isRunning || isPending;
         
         // Update block reason
         let blockReasonEl = card.querySelector('.block-reason');
@@ -718,6 +751,19 @@ async function saveSpeedForTool(toolId, speed) {
     } catch (e) {
         console.error('Failed to save speed:', e);
         alert(`Failed to save speed: ${e}`);
+    }
+}
+
+async function saveDesktalkParallel(value) {
+    if (!tauriReady) return;
+    
+    try {
+        await invoke('set_desktalk_parallel', { value });
+        desktalkParallel = value;
+        console.log(`Saved DeskTalk parallel: ${value}`);
+    } catch (e) {
+        console.error('Failed to save DeskTalk parallel:', e);
+        alert(`Failed to save parallel setting: ${e}`);
     }
 }
 

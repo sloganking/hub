@@ -128,6 +128,8 @@ fn main() {
             tauri_commands::start_tool,
             tauri_commands::stop_tool,
             tauri_commands::open_tool_settings,
+            tauri_commands::get_desktalk_parallel,
+            tauri_commands::set_desktalk_parallel,
             // License commands
             license_commands::get_auth_status,
             license_commands::is_authorized,
