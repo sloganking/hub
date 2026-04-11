@@ -7560,7 +7560,7 @@ dependencies = [
  "serde_json",
  "slint",
  "slint-build",
- "speakstream",
+ "speakstream 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "sysinfo",
  "tempfile",
  "tokio",
@@ -9214,11 +9214,32 @@ dependencies = [
  "futures",
  "rdev",
  "rodio 0.17.3",
- "speakstream",
+ "speakstream 0.4.3",
  "tempfile",
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "speakstream"
+version = "0.4.3"
+dependencies = [
+ "anyhow",
+ "async-openai 0.28.3",
+ "async-std",
+ "colored",
+ "cpal",
+ "ctrlc",
+ "default-device-sink",
+ "flume",
+ "futures",
+ "once_cell",
+ "rodio 0.17.3",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "windows 0.54.0",
 ]
 
 [[package]]

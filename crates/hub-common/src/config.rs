@@ -71,6 +71,10 @@ pub struct ToolConfig {
     #[serde(default)]
     pub speech_speed: Option<f32>,
 
+    /// Audio duck volume for TTS tools (0 = disabled, 1-100 = duck level, default 50)
+    #[serde(default)]
+    pub duck_volume: Option<u32>,
+
     /// Tool-specific settings (stored as JSON value for flexibility)
     #[serde(default)]
     pub settings: serde_json::Value,
@@ -89,6 +93,7 @@ impl Default for ToolConfig {
             special_hotkey: None,
             voice: None,
             speech_speed: None,
+            duck_volume: None,
             settings: serde_json::Value::Null,
         }
     }

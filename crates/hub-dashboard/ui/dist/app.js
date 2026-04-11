@@ -19,6 +19,7 @@ const TOOLS = [
         type: 'cli',
         hotkeyArg: '--ptt-key',
         hasVoice: true,
+        hasDuckVolume: true,
     },
     {
         id: 'quick-assistant',
@@ -468,6 +469,30 @@ function renderTools() {
             `;
         }
         
+        // Build duck volume control for tools that support it
+        let duckHtml = '';
+        if (tool.hasDuckVolume) {
+            const currentDuck = toolConfig.duck_volume ?? 50;
+            const duckOptions = [
+                { value: 0, label: 'Off' },
+                { value: 25, label: '25%' },
+                { value: 50, label: '50% (default)' },
+                { value: 75, label: '75%' },
+                { value: 100, label: '100% (silent)' },
+            ].map(opt =>
+                `<option value="${opt.value}" ${currentDuck === opt.value ? 'selected' : ''}>${opt.label}</option>`
+            ).join('');
+            duckHtml = `
+                <div class="tool-voice">
+                    <label class="voice-label">Audio Ducking:</label>
+                    <select class="speed-select" id="duck-${tool.id}" ${isRunning || isPending ? 'disabled' : ''}>
+                        ${duckOptions}
+                    </select>
+                    <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Quiets other apps while speaking</span>
+                </div>
+            `;
+        }
+
         // Determine what's blocking the start
         let blockReason = '';
         if (!isRunning && !isPending) {
@@ -517,6 +542,7 @@ function renderTools() {
             ${parallelHtml}
             ${voiceHtml}
             ${speedHtml}
+            ${duckHtml}
             <div class="tool-actions">
                 ${buttonHtml}
             </div>
@@ -555,6 +581,14 @@ function renderTools() {
     if (parallelSelect) {
         parallelSelect.addEventListener('change', () => saveDesktalkParallel(parseInt(parallelSelect.value)));
     }
+    
+    // Add change listeners to duck volume selects
+    TOOLS.filter(t => t.hasDuckVolume).forEach(tool => {
+        const select = document.getElementById(`duck-${tool.id}`);
+        if (select) {
+            select.addEventListener('change', () => saveDuckForTool(tool.id, parseInt(select.value)));
+        }
+    });
 }
 
 function updateToolCards() {
@@ -634,6 +668,8 @@ function updateToolCards() {
         if (speedSelect) speedSelect.disabled = isRunning || isPending;
         const parallelSelect = document.getElementById('parallel-desk-talk');
         if (parallelSelect && tool.id === 'desk-talk') parallelSelect.disabled = isRunning || isPending;
+        const duckSelect = document.getElementById(`duck-${tool.id}`);
+        if (duckSelect) duckSelect.disabled = isRunning || isPending;
         
         // Update block reason
         let blockReasonEl = card.querySelector('.block-reason');
@@ -670,7 +706,8 @@ async function saveHotkeyForTool(toolId, hotkey) {
                 hotkey: tool.id === toolId ? (hotkey || null) : (existingConfig.hotkey || null),
                 special_hotkey: existingConfig.special_hotkey || null,
                 voice: existingConfig.voice || null,
-                speech_speed: existingConfig.speech_speed || null
+                speech_speed: existingConfig.speech_speed || null,
+                duck_volume: existingConfig.duck_volume ?? null
             };
         });
         
@@ -706,7 +743,8 @@ async function saveVoiceForTool(toolId, voice) {
                 hotkey: existingConfig.hotkey || null,
                 special_hotkey: existingConfig.special_hotkey || null,
                 voice: tool.id === toolId ? (voice || null) : (existingConfig.voice || null),
-                speech_speed: existingConfig.speech_speed || null
+                speech_speed: existingConfig.speech_speed || null,
+                duck_volume: existingConfig.duck_volume ?? null
             };
         });
         
@@ -740,7 +778,8 @@ async function saveSpeedForTool(toolId, speed) {
                 hotkey: existingConfig.hotkey || null,
                 special_hotkey: existingConfig.special_hotkey || null,
                 voice: existingConfig.voice || null,
-                speech_speed: tool.id === toolId ? speed : (existingConfig.speech_speed || null)
+                speech_speed: tool.id === toolId ? speed : (existingConfig.speech_speed || null),
+                duck_volume: existingConfig.duck_volume ?? null
             };
         });
         
@@ -751,6 +790,40 @@ async function saveSpeedForTool(toolId, speed) {
     } catch (e) {
         console.error('Failed to save speed:', e);
         alert(`Failed to save speed: ${e}`);
+    }
+}
+
+async function saveDuckForTool(toolId, duckVolume) {
+    if (!tauriReady) return;
+    
+    try {
+        const newConfig = {
+            auto_start: config.auto_start || false,
+            start_minimized: config.start_minimized || false,
+            dark_mode: config.dark_mode !== false,
+            tools: {}
+        };
+        
+        TOOLS.forEach(tool => {
+            const existingConfig = config.tools?.[tool.id] || {};
+            newConfig.tools[tool.id] = {
+                enabled: true,
+                auto_start: existingConfig.auto_start || false,
+                hotkey: existingConfig.hotkey || null,
+                special_hotkey: existingConfig.special_hotkey || null,
+                voice: existingConfig.voice || null,
+                speech_speed: existingConfig.speech_speed || null,
+                duck_volume: tool.id === toolId ? duckVolume : (existingConfig.duck_volume ?? null)
+            };
+        });
+        
+        await invoke('save_config', { config: newConfig });
+        config = newConfig;
+        
+        console.log(`Saved duck volume ${duckVolume} for ${toolId}`);
+    } catch (e) {
+        console.error('Failed to save duck volume:', e);
+        alert(`Failed to save duck volume: ${e}`);
     }
 }
 
@@ -878,7 +951,8 @@ function setupEventListeners() {
                     hotkey: existingConfig.hotkey || null,
                     special_hotkey: existingConfig.special_hotkey || null,
                     voice: existingConfig.voice || null,
-                    speech_speed: existingConfig.speech_speed || null
+                    speech_speed: existingConfig.speech_speed || null,
+                    duck_volume: existingConfig.duck_volume ?? null
                 };
             });
             

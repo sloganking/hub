@@ -216,6 +216,13 @@ impl ProcessManager {
                 _ => {}
             }
         }
+
+        // Pass duck volume for speak-selected
+        if matches!(tool_id, ToolId::SpeakSelected) {
+            let duck_vol = tool_config.duck_volume.unwrap_or(50);
+            cmd.arg("--duck-volume").arg(duck_vol.to_string());
+            println!("  Passing duck volume: {}", duck_vol);
+        }
     }
 
     /// Stop a tool process (whether spawned by us or running externally)
