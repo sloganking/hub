@@ -29,7 +29,7 @@
         "installMode": "perMachine",
         "languages": ["English"],
         "displayLanguageSelector": false,
-        "compression": "lzma"
+        "compression": "none"
       }
     },
     "publisher": "Productivity Hub",
