@@ -362,6 +362,47 @@ pub fn set_desktalk_parallel(value: usize) -> Result<(), String> {
     Ok(())
 }
 
+// === DeskTalk realtime (streaming) config ===
+
+/// Read DeskTalk realtime value (non-Tauri, for use from process_manager)
+pub fn get_desktalk_realtime_value() -> Result<bool, String> {
+    let path = desktalk_config_path()?;
+    if !path.exists() {
+        return Ok(false);
+    }
+    let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let val: serde_json::Value = serde_json::from_str(&contents).map_err(|e| e.to_string())?;
+    Ok(val
+        .get("realtime")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false))
+}
+
+#[tauri::command]
+pub fn get_desktalk_realtime() -> Result<bool, String> {
+    get_desktalk_realtime_value()
+}
+
+#[tauri::command]
+pub fn set_desktalk_realtime(value: bool) -> Result<(), String> {
+    let path = desktalk_config_path()?;
+
+    let mut val: serde_json::Value = if path.exists() {
+        let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&contents).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    val.as_object_mut()
+        .ok_or("Config is not an object")?
+        .insert("realtime".to_string(), serde_json::json!(value));
+
+    let contents = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
+    std::fs::write(&path, contents).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Find a tool binary by name
 fn find_tool_binary(binary_name: &str) -> Option<std::path::PathBuf> {
     // Try to find relative to current executable (production layout)

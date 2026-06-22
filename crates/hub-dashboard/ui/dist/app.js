@@ -221,6 +221,7 @@ let tauriReady = false;
 let hasApiKey = false;
 let authStatus = null; // License/trial status
 let desktalkParallel = 1;
+let desktalkRealtime = false;
 
 function initTauri() {
     if (window.__TAURI_INTERNALS__) {
@@ -327,6 +328,11 @@ async function loadConfig() {
         } catch (e2) {
             console.error('Failed to load DeskTalk parallel config:', e2);
         }
+        try {
+            desktalkRealtime = await invoke('get_desktalk_realtime');
+        } catch (e3) {
+            console.error('Failed to load DeskTalk realtime config:', e3);
+        }
     } catch (e) {
         console.error('Failed to load config:', e);
     }
@@ -417,21 +423,37 @@ function renderTools() {
             hotkeyHtml = `<div class="tool-hotkey"><span class="gui-note">Uses own settings</span></div>`;
         }
         
-        // Parallel requests selector for DeskTalk
+        // Transcription mode + parallel (racing) selectors for DeskTalk
         let parallelHtml = '';
         if (tool.id === 'desk-talk') {
-            const parallelOptions = [1,2,3,4,5].map(n =>
-                `<option value="${n}" ${desktalkParallel === n ? 'selected' : ''}>${n}${n === 1 ? ' (default)' : ''}</option>`
-            ).join('');
-            parallelHtml = `
+            const modeHtml = `
                 <div class="tool-voice">
-                    <label class="voice-label">Parallel requests:</label>
-                    <select class="speed-select" id="parallel-desk-talk" ${isRunning || isPending ? 'disabled' : ''}>
-                        ${parallelOptions}
+                    <label class="voice-label">Mode:</label>
+                    <select class="speed-select" id="mode-desk-talk" ${isRunning || isPending ? 'disabled' : ''}>
+                        <option value="batch" ${!desktalkRealtime ? 'selected' : ''}>All at once (default)</option>
+                        <option value="realtime" ${desktalkRealtime ? 'selected' : ''}>Real-time</option>
                     </select>
-                    <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Races N transcriptions, uses fastest</span>
+                    <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Real-time types as you speak; all-at-once transcribes on release</span>
                 </div>
             `;
+
+            // Racing only applies in all-at-once mode.
+            let racingHtml = '';
+            if (!desktalkRealtime) {
+                const parallelOptions = [1,2,3,4,5].map(n =>
+                    `<option value="${n}" ${desktalkParallel === n ? 'selected' : ''}>${n}${n === 1 ? ' (default)' : ''}</option>`
+                ).join('');
+                racingHtml = `
+                    <div class="tool-voice">
+                        <label class="voice-label">Parallel requests:</label>
+                        <select class="speed-select" id="parallel-desk-talk" ${isRunning || isPending ? 'disabled' : ''}>
+                            ${parallelOptions}
+                        </select>
+                        <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Races N transcriptions, uses fastest</span>
+                    </div>
+                `;
+            }
+            parallelHtml = modeHtml + racingHtml;
         }
         
         // Build voice selector for TTS tools
@@ -576,6 +598,12 @@ function renderTools() {
         }
     });
     
+    // Add change listener for DeskTalk mode (real-time vs all-at-once) selector
+    const modeSelect = document.getElementById('mode-desk-talk');
+    if (modeSelect) {
+        modeSelect.addEventListener('change', () => saveDesktalkRealtime(modeSelect.value === 'realtime'));
+    }
+    
     // Add change listener for DeskTalk parallel selector
     const parallelSelect = document.getElementById('parallel-desk-talk');
     if (parallelSelect) {
@@ -668,6 +696,8 @@ function updateToolCards() {
         if (speedSelect) speedSelect.disabled = isRunning || isPending;
         const parallelSelect = document.getElementById('parallel-desk-talk');
         if (parallelSelect && tool.id === 'desk-talk') parallelSelect.disabled = isRunning || isPending;
+        const modeSelect = document.getElementById('mode-desk-talk');
+        if (modeSelect && tool.id === 'desk-talk') modeSelect.disabled = isRunning || isPending;
         const duckSelect = document.getElementById(`duck-${tool.id}`);
         if (duckSelect) duckSelect.disabled = isRunning || isPending;
         
@@ -837,6 +867,21 @@ async function saveDesktalkParallel(value) {
     } catch (e) {
         console.error('Failed to save DeskTalk parallel:', e);
         alert(`Failed to save parallel setting: ${e}`);
+    }
+}
+
+async function saveDesktalkRealtime(value) {
+    if (!tauriReady) return;
+    
+    try {
+        await invoke('set_desktalk_realtime', { value });
+        desktalkRealtime = value;
+        console.log(`Saved DeskTalk realtime: ${value}`);
+        // Re-render so the racing dropdown shows/hides based on the new mode.
+        renderTools();
+    } catch (e) {
+        console.error('Failed to save DeskTalk realtime:', e);
+        alert(`Failed to save mode setting: ${e}`);
     }
 }
 

@@ -155,12 +155,28 @@ impl ProcessManager {
 
     /// Add command-line arguments based on tool type
     fn add_tool_args(&self, cmd: &mut Command, tool_id: &ToolId, tool_config: &ToolConfig) {
-        // DeskTalk: pass --parallel via CLI (config-file path causes hangs)
+        // DeskTalk: pass --parallel / --realtime via CLI (config-file path causes hangs)
         if matches!(tool_id, ToolId::DeskTalk) {
-            if let Ok(parallel) = crate::tauri_commands::get_desktalk_parallel_value() {
-                if parallel > 1 {
-                    cmd.arg("--parallel").arg(parallel.to_string());
-                    println!("  Passing --parallel {} to DeskTalk", parallel);
+            let realtime = crate::tauri_commands::get_desktalk_realtime_value().unwrap_or(false);
+
+            // Always pass an explicit realtime flag so the CLI overrides whatever
+            // is saved in DeskTalk's own config file.
+            if realtime {
+                cmd.arg("--realtime");
+                println!("  Passing --realtime to DeskTalk (streaming mode)");
+            } else {
+                cmd.arg("--no-realtime");
+                println!("  Passing --no-realtime to DeskTalk (all-at-once mode)");
+            }
+
+            // Racing only applies in all-at-once mode; realtime streams a single
+            // session and cannot race.
+            if !realtime {
+                if let Ok(parallel) = crate::tauri_commands::get_desktalk_parallel_value() {
+                    if parallel > 1 {
+                        cmd.arg("--parallel").arg(parallel.to_string());
+                        println!("  Passing --parallel {} to DeskTalk", parallel);
+                    }
                 }
             }
             return;
