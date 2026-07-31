@@ -29,37 +29,18 @@ Push-Location $WorkspaceRoot
 try {
     # Build all tools first
     if (-not $SkipTools) {
-        $tools = @(
-            @{ Name = "desk-talk"; Path = "tools/desk-talk" },
-            @{ Name = "speak-selected"; Path = "tools/speak-selected" },
-            @{ Name = "quick-assistant"; Path = "tools/quick-assistant" },
-            @{ Name = "flatten-string"; Path = "tools/flatten-string" },
-            @{ Name = "typo-fix"; Path = "tools/typo-fix" },
-            @{ Name = "ocr-paste"; Path = "tools/ocr-paste" }
-        )
+        # Cargo package names (they do not all match their directory names).
+        # Building from the workspace root with -p keeps the working directory
+        # stable, which matters because these tools are git submodules.
+        $tools = @("desk-talk", "speak-selected", "quick-assistant", "strflatten", "typo-fix", "ocrp")
 
         foreach ($tool in $tools) {
-            Write-Host "Building $($tool.Name)..." -ForegroundColor Green
-            
-            Push-Location $tool.Path
-            try {
-                # For Tauri apps, use tauri build; for others, use cargo build
-                $cargoToml = Get-Content "Cargo.toml" -Raw
-                if ($cargoToml -match "tauri") {
-                    Write-Host "  (Tauri app - using cargo build for binary only)" -ForegroundColor Gray
-                    cargo build @CargoArgs
-                } else {
-                    cargo build @CargoArgs
-                }
-                
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Failed to build $($tool.Name)"
-                }
-                Write-Host "  Done!" -ForegroundColor Green
+            Write-Host "Building $tool..." -ForegroundColor Green
+            cargo build -p $tool @CargoArgs
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to build $tool"
             }
-            finally {
-                Pop-Location
-            }
+            Write-Host "  Done!" -ForegroundColor Green
         }
 
         Write-Host ""
@@ -73,22 +54,24 @@ try {
     $toolsBinDir = "crates/hub-dashboard/resources/tools"
     New-Item -ItemType Directory -Force -Path $toolsBinDir | Out-Null
 
+    # Every tool is a member of this workspace, so cargo emits all of them into
+    # the shared workspace target directory - not into tools/<tool>/target.
     $binaries = @(
-        @{ Source = "tools/desk-talk/target/$BuildType/desk-talk.exe"; Name = "desk-talk.exe" },
-        @{ Source = "tools/speak-selected/target/$BuildType/speak-selected.exe"; Name = "speak-selected.exe" },
-        @{ Source = "tools/quick-assistant/target/$BuildType/quick-assistant.exe"; Name = "quick-assistant.exe" },
-        @{ Source = "tools/flatten-string/target/$BuildType/strflatten.exe"; Name = "strflatten.exe" },
-        @{ Source = "tools/typo-fix/target/$BuildType/typo-fix.exe"; Name = "typo-fix.exe" },
-        @{ Source = "tools/ocr-paste/target/$BuildType/ocrp.exe"; Name = "ocrp.exe" }
+        @{ Source = "target/$BuildType/desk-talk.exe"; Name = "desk-talk.exe" },
+        @{ Source = "target/$BuildType/speak-selected.exe"; Name = "speak-selected.exe" },
+        @{ Source = "target/$BuildType/quick-assistant.exe"; Name = "quick-assistant.exe" },
+        @{ Source = "target/$BuildType/strflatten.exe"; Name = "strflatten.exe" },
+        @{ Source = "target/$BuildType/typo-fix.exe"; Name = "typo-fix.exe" },
+        @{ Source = "target/$BuildType/ocrp.exe"; Name = "ocrp.exe" }
     )
 
     foreach ($bin in $binaries) {
-        if (Test-Path $bin.Source) {
-            Copy-Item -Path $bin.Source -Destination "$toolsBinDir/$($bin.Name)" -Force
-            Write-Host "  Copied $($bin.Name)" -ForegroundColor Gray
-        } else {
-            Write-Host "  Warning: $($bin.Source) not found" -ForegroundColor Yellow
+        if (-not (Test-Path $bin.Source)) {
+            # Staging a stale binary would silently ship an old build.
+            throw "Expected tool binary not found: $($bin.Source)"
         }
+        Copy-Item -Path $bin.Source -Destination "$toolsBinDir/$($bin.Name)" -Force
+        Write-Host "  Copied $($bin.Name)" -ForegroundColor Gray
     }
 
     Write-Host ""

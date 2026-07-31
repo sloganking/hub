@@ -25,5 +25,10 @@ crates/hub-dashboard/resources/tools/
 crates/hub-dashboard/tauri.conf.dev.json
 *.log
 
+# Local directory junction to ../../speakstream, which speak-selected and
+# quick-assistant depend on by path. Committing it would inline that whole
+# checkout into this repository.
+/tools/speakstream/
+
 .env
 
