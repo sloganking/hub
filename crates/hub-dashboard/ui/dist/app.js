@@ -495,22 +495,13 @@ function renderTools() {
         let duckHtml = '';
         if (tool.hasDuckVolume) {
             const currentDuck = toolConfig.duck_volume ?? 50;
-            const duckOptions = [
-                { value: 0, label: 'Off' },
-                { value: 25, label: '25%' },
-                { value: 50, label: '50% (default)' },
-                { value: 75, label: '75%' },
-                { value: 100, label: '100% (silent)' },
-            ].map(opt =>
-                `<option value="${opt.value}" ${currentDuck === opt.value ? 'selected' : ''}>${opt.label}</option>`
-            ).join('');
             duckHtml = `
                 <div class="tool-voice">
                     <label class="voice-label">Audio Ducking:</label>
-                    <select class="speed-select" id="duck-${tool.id}" ${isRunning || isPending ? 'disabled' : ''}>
-                        ${duckOptions}
-                    </select>
-                    <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Quiets other apps while speaking</span>
+                    <input type="number" class="speed-select" id="duck-${tool.id}"
+                        min="0" max="100" step="5" value="${currentDuck}"
+                        style="width:64px;" ${isRunning || isPending ? 'disabled' : ''}>
+                    <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Volume other apps play at while speaking (0 = silent, 100 = no ducking)</span>
                 </div>
             `;
         }
@@ -610,11 +601,17 @@ function renderTools() {
         parallelSelect.addEventListener('change', () => saveDesktalkParallel(parseInt(parallelSelect.value)));
     }
     
-    // Add change listeners to duck volume selects
+    // Add change listeners to duck volume inputs
     TOOLS.filter(t => t.hasDuckVolume).forEach(tool => {
-        const select = document.getElementById(`duck-${tool.id}`);
-        if (select) {
-            select.addEventListener('change', () => saveDuckForTool(tool.id, parseInt(select.value)));
+        const input = document.getElementById(`duck-${tool.id}`);
+        if (input) {
+            input.addEventListener('change', () => {
+                let val = parseInt(input.value);
+                if (isNaN(val)) val = 50;
+                val = Math.max(0, Math.min(100, val));
+                input.value = val;
+                saveDuckForTool(tool.id, val);
+            });
         }
     });
 }
