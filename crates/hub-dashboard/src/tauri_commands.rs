@@ -403,6 +403,58 @@ pub fn set_desktalk_realtime(value: bool) -> Result<(), String> {
     Ok(())
 }
 
+// === DeskTalk push-to-talk mode config ===
+
+/// Read DeskTalk ptt_mode value (non-Tauri, for use from process_manager).
+/// "hold" = record while the key is held; "toggle" = press once to start,
+/// press again to stop. Anything unrecognized falls back to "hold".
+pub fn get_desktalk_ptt_mode_value() -> Result<String, String> {
+    let path = desktalk_config_path()?;
+    if !path.exists() {
+        return Ok("hold".to_string());
+    }
+    let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let val: serde_json::Value = serde_json::from_str(&contents).map_err(|e| e.to_string())?;
+    let mode = val
+        .get("ptt_mode")
+        .and_then(|v| v.as_str())
+        .unwrap_or("hold");
+    Ok(sanitize_ptt_mode(mode))
+}
+
+fn sanitize_ptt_mode(value: &str) -> String {
+    match value.to_lowercase().as_str() {
+        "toggle" => "toggle".to_string(),
+        _ => "hold".to_string(),
+    }
+}
+
+#[tauri::command]
+pub fn get_desktalk_ptt_mode() -> Result<String, String> {
+    get_desktalk_ptt_mode_value()
+}
+
+#[tauri::command]
+pub fn set_desktalk_ptt_mode(value: String) -> Result<(), String> {
+    let value = sanitize_ptt_mode(&value);
+    let path = desktalk_config_path()?;
+
+    let mut val: serde_json::Value = if path.exists() {
+        let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&contents).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    val.as_object_mut()
+        .ok_or("Config is not an object")?
+        .insert("ptt_mode".to_string(), serde_json::json!(value));
+
+    let contents = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
+    std::fs::write(&path, contents).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Find a tool binary by name
 fn find_tool_binary(binary_name: &str) -> Option<std::path::PathBuf> {
     // Try to find relative to current executable (production layout)

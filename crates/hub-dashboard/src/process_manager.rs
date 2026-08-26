@@ -155,9 +155,22 @@ impl ProcessManager {
 
     /// Add command-line arguments based on tool type
     fn add_tool_args(&self, cmd: &mut Command, tool_id: &ToolId, tool_config: &ToolConfig) {
-        // DeskTalk: pass --parallel / --realtime via CLI (config-file path causes hangs)
+        // DeskTalk: pass --parallel / --realtime / --toggle via CLI (config-file
+        // path causes hangs)
         if matches!(tool_id, ToolId::DeskTalk) {
             let realtime = crate::tauri_commands::get_desktalk_realtime_value().unwrap_or(false);
+            let ptt_mode = crate::tauri_commands::get_desktalk_ptt_mode_value()
+                .unwrap_or_else(|_| "hold".to_string());
+
+            // Always pass an explicit push-to-talk mode flag, same reasoning as
+            // the realtime flag: the CLI has to win over DeskTalk's saved config.
+            if ptt_mode == "toggle" {
+                cmd.arg("--toggle");
+                println!("  Passing --toggle to DeskTalk (press once to start, once to stop)");
+            } else {
+                cmd.arg("--hold");
+                println!("  Passing --hold to DeskTalk (record while key is held)");
+            }
 
             // Always pass an explicit realtime flag so the CLI overrides whatever
             // is saved in DeskTalk's own config file.

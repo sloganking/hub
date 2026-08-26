@@ -222,6 +222,7 @@ let hasApiKey = false;
 let authStatus = null; // License/trial status
 let desktalkParallel = 1;
 let desktalkRealtime = false;
+let desktalkPttMode = 'hold';
 
 function initTauri() {
     if (window.__TAURI_INTERNALS__) {
@@ -333,6 +334,11 @@ async function loadConfig() {
         } catch (e3) {
             console.error('Failed to load DeskTalk realtime config:', e3);
         }
+        try {
+            desktalkPttMode = await invoke('get_desktalk_ptt_mode');
+        } catch (e4) {
+            console.error('Failed to load DeskTalk push-to-talk mode:', e4);
+        }
     } catch (e) {
         console.error('Failed to load config:', e);
     }
@@ -437,6 +443,17 @@ function renderTools() {
                 </div>
             `;
 
+            const pttHtml = `
+                <div class="tool-voice">
+                    <label class="voice-label">Push-to-talk:</label>
+                    <select class="speed-select" id="ptt-mode-desk-talk" ${isRunning || isPending ? 'disabled' : ''}>
+                        <option value="hold" ${desktalkPttMode !== 'toggle' ? 'selected' : ''}>Hold to talk (default)</option>
+                        <option value="toggle" ${desktalkPttMode === 'toggle' ? 'selected' : ''}>Toggle to talk</option>
+                    </select>
+                    <span class="gui-note" style="margin-left:6px;font-size:0.8em;">Toggle: press once to start, press again to stop - no need to hold the key</span>
+                </div>
+            `;
+
             // Racing only applies in all-at-once mode.
             let racingHtml = '';
             if (!desktalkRealtime) {
@@ -453,7 +470,7 @@ function renderTools() {
                     </div>
                 `;
             }
-            parallelHtml = modeHtml + racingHtml;
+            parallelHtml = modeHtml + pttHtml + racingHtml;
         }
         
         // Build voice selector for TTS tools
@@ -595,6 +612,12 @@ function renderTools() {
         modeSelect.addEventListener('change', () => saveDesktalkRealtime(modeSelect.value === 'realtime'));
     }
     
+    // Add change listener for DeskTalk push-to-talk mode (hold vs toggle)
+    const pttModeSelect = document.getElementById('ptt-mode-desk-talk');
+    if (pttModeSelect) {
+        pttModeSelect.addEventListener('change', () => saveDesktalkPttMode(pttModeSelect.value));
+    }
+    
     // Add change listener for DeskTalk parallel selector
     const parallelSelect = document.getElementById('parallel-desk-talk');
     if (parallelSelect) {
@@ -695,6 +718,8 @@ function updateToolCards() {
         if (parallelSelect && tool.id === 'desk-talk') parallelSelect.disabled = isRunning || isPending;
         const modeSelect = document.getElementById('mode-desk-talk');
         if (modeSelect && tool.id === 'desk-talk') modeSelect.disabled = isRunning || isPending;
+        const pttModeSelect = document.getElementById('ptt-mode-desk-talk');
+        if (pttModeSelect && tool.id === 'desk-talk') pttModeSelect.disabled = isRunning || isPending;
         const duckSelect = document.getElementById(`duck-${tool.id}`);
         if (duckSelect) duckSelect.disabled = isRunning || isPending;
         
@@ -879,6 +904,19 @@ async function saveDesktalkRealtime(value) {
     } catch (e) {
         console.error('Failed to save DeskTalk realtime:', e);
         alert(`Failed to save mode setting: ${e}`);
+    }
+}
+
+async function saveDesktalkPttMode(value) {
+    if (!tauriReady) return;
+    
+    try {
+        await invoke('set_desktalk_ptt_mode', { value });
+        desktalkPttMode = value;
+        console.log(`Saved DeskTalk push-to-talk mode: ${value}`);
+    } catch (e) {
+        console.error('Failed to save DeskTalk push-to-talk mode:', e);
+        alert(`Failed to save push-to-talk mode: ${e}`);
     }
 }
 
