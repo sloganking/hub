@@ -58,6 +58,10 @@ The installer will be created at:
 target/release/bundle/nsis/Productivity Hub_x.x.x_x64-setup.exe
 ```
 
+### Headless installation
+
+The Windows release installer installs for the current user under `%LOCALAPPDATA%\Productivity Hub`, so `/S` can install without an administrator prompt. Existing user configuration is retained. When migrating from a previous all-users installation, close the old Hub and its tools, start the new installed Hub, and update its Windows startup entry to the new executable. The older Program Files copy is not automatically removed.
+
 ## Project Structure
 
 ```
