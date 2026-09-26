@@ -17,7 +17,9 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 $BuildType = if ($Release) { "release" } else { "debug" }
-$CargoArgs = if ($Release) { @("--release") } else { @() }
+# @(...) keeps this an array: a bare `if` unrolls a one-element array to a
+# string, and splatting a string (@CargoArgs) hands cargo a stray "-".
+$CargoArgs = @(if ($Release) { "--release" })
 
 Write-Host "Build type: $BuildType" -ForegroundColor Yellow
 Write-Host "Workspace: $WorkspaceRoot" -ForegroundColor Yellow
